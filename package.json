@@ -1,0 +1,42 @@
+{
+  "name": "city-of-tides",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test:shared-world": "node --loader tsx _qa/shared-world-engine.ts",
+    "test:grant-inventory": "node --loader tsx _qa/player-inventory.ts",
+    "test:grant-cloud": "node _qa/grant-cloud-flow.mjs",
+    "test:production-backend": "node _qa/production-backend.mjs",
+    "test:release-visual": "node --loader tsx _qa/release-visual.ts",
+    "test:protocol": "TMPDIR=/private/tmp tsx _qa/protocol.ts",
+    "test:persistence": "node _qa/persistence.mjs",
+    "test:item-images": "node _qa/item-images.mjs",
+    "test:image-director": "TMPDIR=/private/tmp tsx _qa/image-director.ts",
+    "test:audio": "node _qa/audio-unlock.mjs",
+    "test:restart": "node _qa/restart-world.mjs",
+    "test:choice-recovery": "node _qa/choice-recovery.mjs",
+    "test:i18n": "node _qa/i18n.mjs",
+    "test:avatar": "node _qa/avatar.mjs"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "less": "^4.2.0",
+    "playwright": "^1.62.1",
+    "tsx": "^4.23.5",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.21"
+  }
+}

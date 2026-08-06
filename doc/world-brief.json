@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "city-of-tides",
+  "title": { "zh": "潮痕之城", "en": "City of Tides" },
+  "premise": {
+    "zh": "一座周期性被海水淹没的旧城保存着最近旅人的行动，后来者可以回应、延续或改变这些痕迹。",
+    "en": "A periodically flooded city carries the actions of recent travellers, allowing later visitors to answer, continue, or alter their traces."
+  },
+  "worldRules": [
+    "潮汐季固定持续七天",
+    "普通痕迹会随时间衰减",
+    "三名不同旅人的支持可以在本季锚定一道痕迹",
+    "AI 描述已确认事件，但不能直接改写世界数值",
+    "当前实验世界只由最近六位玩家的最新档案重建"
+  ],
+  "regions": [
+    { "id": "lighthouse", "stat": "light", "initial": 42 },
+    { "id": "station", "stat": "passage", "initial": 38 },
+    { "id": "market", "stat": "supplies", "initial": 46 },
+    { "id": "archive", "stat": "memory", "initial": 35 }
+  ],
+  "visualDirection": "Wet civic noir: indigo water, oxidized copper, wet stone, amber civic lights, no wilderness-road imagery.",
+  "contentSafety": {
+    "publicMessageMaxLength": 120,
+    "moderationRequiredForProduction": true,
+    "realUsersAreNeverPresentedAsAICharacters": true
+  }
+}
