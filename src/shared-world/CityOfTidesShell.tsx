@@ -59,29 +59,46 @@ export default function CityOfTidesShell() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerTab, setDrawerTab] = useState<DrawerTab>('regions')
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null)
-  const [selectedKind, setSelectedKind] = useState<TraceKind>('repair')
+  const [entered, setEntered] = useState(false)
+  const [composerOpen, setComposerOpen] = useState(false)
+  const [submittingKind, setSubmittingKind] = useState<TraceKind | null>(null)
   const [message, setMessage] = useState('')
   const [replyToId, setReplyToId] = useState<string | undefined>()
   const [confirmReset, setConfirmReset] = useState(false)
   const [textSize, setTextSize] = useState<TextSize>(() => (localStorage.getItem('city-of-tides-text-size') as TextSize) || 'standard')
   const feedRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const submissionRef = useRef(false)
   const labMode = useMemo(() => new URLSearchParams(window.location.search).get('lab') === '1', [])
+  const coverImage = useMemo(() => new URL('./poster.png', document.baseURI).href, [])
   const travellersById = useMemo(() => new Map(world.travellers.map((item) => [item.id, item])), [world.travellers])
 
   useEffect(() => {
-    if (!world.view) return
-    requestAnimationFrame(() => feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: 'smooth' }))
-  }, [world.view?.cursor])
+    if (!entered || !world.view) return
+    requestAnimationFrame(() => feedRef.current?.scrollTo({ top: 0, behavior: 'auto' }))
+  }, [entered])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { setDrawerOpen(false); setSelectedTraceId(null) }
-      if (event.key.toLowerCase() === 'w' && !(event.target instanceof HTMLInputElement)) setDrawerOpen(true)
+      if (event.key.toLowerCase() === 'w' && !(event.target instanceof HTMLInputElement) && !(event.target instanceof HTMLTextAreaElement)) setDrawerOpen(true)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  if (!entered) return <main className="ct-stage ct-stage--entry">
+    <section className="ct-entry">
+      <figure className="ct-entry__poster"><img src={coverImage} alt={t('coverAlt')} draggable={false}/><figcaption>{t('entryEyebrow')}</figcaption></figure>
+      <div className="ct-entry__copy">
+        <small>{t('entryEyebrow')}</small>
+        <h1>{t('title')}</h1>
+        <p className="ct-entry__promise">{t('subtitle')}</p>
+        <div className="ct-entry__background"><span>{t('worldBackground')}</span><h2>{t('worldBackgroundTitle')}</h2><p>{t('worldBackgroundBodyA')}</p><p>{t('worldBackgroundBodyB')}</p></div>
+        <button type="button" disabled={!world.archive || !world.view} onClick={() => { if (!world.archive || !world.view) return; audio.play('district'); setEntered(true) }}><WaveIcon/><span>{world.archive && world.view ? t('enterCity') : t('enterLoading')}</span></button>
+      </div>
+    </section>
+  </main>
 
   if (!world.archive || !world.view) return <main className="ct-loading"><i/><span/><i/></main>
 
@@ -100,18 +117,40 @@ export default function CityOfTidesShell() {
     setTextSize(next)
   }
 
-  const submit = async () => {
-    const content = message.trim() || t(traceActionKey(selectedKind))
-    const result = await world.createTrace(regionId, selectedKind, content, replyToId)
-    if (!result) { audio.play('warning'); return }
-    audio.play(replyToId ? 'reply' : selectedKind === 'warning' ? 'warning' : 'trace')
-    setMessage('')
+  const submitTrace = async (kind: TraceKind, content: string, replyId?: string) => {
+    if (submissionRef.current || !content.trim()) return
+    submissionRef.current = true
+    setSubmittingKind(kind)
+    try {
+      const result = await world.createTrace(regionId, kind, content.trim(), replyId)
+      if (!result) { audio.play('warning'); return }
+      audio.play(replyId ? 'reply' : kind === 'warning' ? 'warning' : 'trace')
+      setMessage('')
+      setReplyToId(undefined)
+      setComposerOpen(false)
+    } finally {
+      submissionRef.current = false
+      setSubmittingKind(null)
+    }
+  }
+
+  const chooseAction = (kind: TraceKind) => {
+    audio.play('district')
+    if (kind === 'message') {
+      setReplyToId(undefined)
+      setComposerOpen(true)
+      requestAnimationFrame(() => inputRef.current?.focus())
+      return
+    }
+    setComposerOpen(false)
     setReplyToId(undefined)
+    setMessage('')
+    void submitTrace(kind, t(traceActionKey(kind)))
   }
 
   const chooseReply = (trace: TraceView) => {
-    setSelectedKind('message')
     setReplyToId(trace.traceId)
+    setComposerOpen(true)
     setSelectedTraceId(null)
     requestAnimationFrame(() => inputRef.current?.focus())
   }
@@ -133,7 +172,9 @@ export default function CityOfTidesShell() {
 
   const selectRegion = (id: RegionId) => {
     world.setSelectedRegionId(id)
-    setSelectedKind(ACTIONS[id][0])
+    setComposerOpen(false)
+    setReplyToId(undefined)
+    setMessage('')
     setDrawerOpen(false)
     setSelectedTraceId(null)
     audio.play('district')
@@ -159,25 +200,30 @@ export default function CityOfTidesShell() {
       </header>
 
       <div className="ct-conversation" ref={feedRef}>
-        <div className="ct-day"><span>{t('season')} #{view.season.sequence}</span><small>{t('introText')}</small></div>
+        <section className="ct-world-background"><small>{t('worldBackground')}</small><h1>{t('worldBackgroundTitle')}</h1><p>{t('worldBackgroundBodyA')}</p><p>{t('worldBackgroundBodyB')}</p></section>
+        <div className="ct-section-heading"><span>{t('regionNow')}</span><small>{t('season')} #{view.season.sequence} · {t('introText')}</small></div>
         <section className="ct-narration">
           <span><WaveIcon/></span>
           <div><small>{t('current')}</small><h1>{t(regionKey(regionId))}</h1><p>{t(regionDescKey(regionId))}</p></div>
         </section>
         {view.anchors.filter((anchor) => anchor.regionId === regionId).map((anchor) => <section className="ct-world-event ct-world-event--anchor" key={anchor.id}><AnchorIcon/><div><small>{t('permanent')}</small><strong>{t(anchorKey(anchor.regionId))}</strong><p>{t('anchorEvent')}</p></div></section>)}
-        {traces.length === 0 ? <section className="ct-empty-event"><TraceIcon/><p>{t('empty')}</p></section> : traces.map((trace) => <TraceMessage key={trace.traceId} trace={trace} traveller={travellersById.get(trace.authorUserId)} mine={trace.authorUserId === world.activeTraveller.id} activeUserId={world.activeTraveller.id} locale={locale} t={t} onOpen={() => setSelectedTraceId(trace.traceId)} onClaim={() => claim(trace)}/>)}
         {project.progress > 0 && <section className="ct-world-event"><BellIcon/><div><small>{t('project')}</small><strong>{t(projectKey(regionId))}</strong><p>{project.progress}/{project.target} · {t('contributors', { n: project.contributorUserIds.length })}</p><i><b style={{ width: `${project.progress}%` }}/></i></div></section>}
-        {noticeCopy && <section className={`ct-inline-notice ct-inline-notice--${world.notice?.kind}`}><CheckIcon/><span>{t(noticeCopy)}</span></section>}
+        <div className="ct-section-heading ct-section-heading--traces"><span>{t('tracesSection')}</span><small>{t('tracesSectionHint')}</small></div>
+        {traces.length === 0 ? <section className="ct-empty-event"><TraceIcon/><p>{t('empty')}</p></section> : traces.map((trace) => <TraceMessage key={trace.traceId} trace={trace} traveller={travellersById.get(trace.authorUserId)} mine={trace.authorUserId === world.activeTraveller.id} activeUserId={world.activeTraveller.id} locale={locale} t={t} onOpen={() => setSelectedTraceId(trace.traceId)} onClaim={() => claim(trace)}/>)}
       </div>
 
       <footer className="ct-composer">
-        {replyToId && <div className="ct-reply-bar"><ReplyIcon/><span>{t('reply')} · {travellersById.get(view.traces.find((trace) => trace.traceId === replyToId)?.authorUserId || '')?.name}</span><button type="button" onClick={() => setReplyToId(undefined)}><CloseIcon/></button></div>}
+        <div className="ct-action-heading"><div><strong>{t('actionsSection')}</strong><small>{t('actionsSectionHint')}</small></div>{composerOpen && <button type="button" onClick={() => { setComposerOpen(false); setReplyToId(undefined); setMessage('') }}>{t('cancelMessage')}</button>}</div>
         <div className="ct-quick-replies">
-          {ACTIONS[regionId].map((kind, index) => <button type="button" key={kind} className={selectedKind === kind ? 'is-active' : ''} onClick={() => { setSelectedKind(kind); audio.play('district') }}><small>{String(index + 1).padStart(2, '0')}</small><span>{t(traceActionKey(kind))}</span></button>)}
+          {ACTIONS[regionId].map((kind, index) => <button type="button" key={kind} className={composerOpen && kind === 'message' ? 'is-active' : ''} disabled={world.busy || submittingKind !== null} aria-busy={submittingKind === kind} onClick={() => chooseAction(kind)}><small>{String(index + 1).padStart(2, '0')}</small><span>{submittingKind === kind ? t('actionPending') : t(traceActionKey(kind))}</span></button>)}
         </div>
-        <form onSubmit={(event) => { event.preventDefault(); submit() }}>
-          <TraceIcon/><input ref={inputRef} value={message} maxLength={120} onChange={(event) => setMessage(event.target.value)} placeholder={t('customPlaceholder')}/><button type="submit" disabled={world.busy} aria-label={t('submit')}><SendIcon/></button>
-        </form>
+        {noticeCopy && <div className={`ct-action-feedback ct-action-feedback--${world.notice?.kind}`} aria-live="polite"><CheckIcon/><span>{t(noticeCopy)}</span></div>}
+        {composerOpen && <div className="ct-message-composer">
+          {replyToId && <div className="ct-reply-bar"><ReplyIcon/><span>{t('reply')} · {travellersById.get(view.traces.find((trace) => trace.traceId === replyToId)?.authorUserId || '')?.name}</span><button type="button" onClick={() => setReplyToId(undefined)} aria-label={t('close')}><CloseIcon/></button></div>}
+          <form onSubmit={(event) => { event.preventDefault(); void submitTrace('message', message, replyToId) }}>
+            <TraceIcon/><textarea ref={inputRef} value={message} maxLength={120} rows={1} onChange={(event) => setMessage(event.target.value)} placeholder={t('messagePlaceholder')}/><button type="submit" disabled={world.busy || !message.trim()} aria-label={t('submit')}><SendIcon/></button>
+          </form>
+        </div>}
       </footer>
 
       {drawerOpen && <div className="ct-drawer">

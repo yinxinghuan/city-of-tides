@@ -11,7 +11,7 @@
 
 ```text
 src/shared-world/
-  CityOfTidesShell.tsx   # 对话式 UI、世界抽屉、详情
+  CityOfTidesShell.tsx   # 封面入口、对话式 UI、单击行动、留言、世界抽屉与详情
   engine.ts              # 确定性事件 reducer 与读模型
   gateway.ts             # Local/Remote Gateway
   useCityWorld.ts        # 身份、轮询、提交和冲突恢复
@@ -26,6 +26,7 @@ worker/
   bindings.json          # WORLD、生产 beta 写入和关闭 lab 控制的绑定
 _qa/
   shared-world-engine.ts # 本地 reducer 测试
+  interaction-shell.mjs # 封面门禁、顶部起读、单击行动和留言输入回归测试
   remote-shared-world.mjs# staging 多用户并发/三层验收
   production-backend.mjs# 生产写入/幂等/物品/举报/权限验收
   capture.mjs            # 运行画面状态截图
@@ -66,8 +67,12 @@ _qa/
 
 ### 屏幕适配、音频与多语言
 
+- 首次打开只渲染封面入口；世界数据在背景加载，按钮就绪后进入主 Shell。入口状态不写公共世界，也不改变三层多人数据。
+- `entered` 首次切换后把独立对话滚动区设置为 `scrollTop=0`；世界轮询与行动提交不再自动滚到底部。
+- 普通快捷行动调用 `submitTrace(kind, defaultCopy)` 立即提交；`submissionRef` 与 `world.busy` 共同防止连点重复。只有 `message` 与 `replyToId` 展开 textarea，并拒绝空内容。
+- 对话 DOM 固定为世界背景、当前区域（含锚点/工程）、有效痕迹；行动区在独立 footer 中显示 busy 与成功/错误反馈。
 - Shell 为单列 CSS Grid，唯一列使用 `minmax(0,1fr)`；720 px 以下占满 `100dvh`。
-- 对话区独立滚动，底部输入保持可见；drawer/detail 在移动端成为 bottom sheet。
+- 对话区独立滚动，底部行动保持可见；drawer/detail 在移动端成为 bottom sheet。入口在桌面双栏、移动端纵向，正方形正式海报不做强制横裁。
 - `useTideAudio()` 在首个用户手势后解锁；`i18n.ts` 自动检测 zh/en 并允许覆盖。
 
 ## 4. 扩展点

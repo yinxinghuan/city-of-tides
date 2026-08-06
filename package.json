@@ -23,7 +23,8 @@
     "test:restart": "node _qa/restart-world.mjs",
     "test:choice-recovery": "node _qa/choice-recovery.mjs",
     "test:i18n": "node _qa/i18n.mjs",
-    "test:avatar": "node _qa/avatar.mjs"
+    "test:avatar": "node _qa/avatar.mjs",
+    "test:interaction-shell": "node _qa/interaction-shell.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
