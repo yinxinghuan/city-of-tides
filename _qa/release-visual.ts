@@ -15,7 +15,7 @@ async function open(width: number, height: number, platform: boolean) {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(String(error)))
   page.on('console', (message) => { if (message.type() === 'error' && !message.text().includes('favicon')) errors.push(message.text()) })
-  await page.route('https://game.aiwaves.tech/city-of-tides/**', async (route) => {
+  await page.route('https://game.aiwaves.tech/city-of-tides/api/**', async (route) => {
     const pathname = new URL(route.request().url()).pathname
     if (pathname.endsWith('/ensure')) return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ world_id: 'main', version: archive.version, cursor: archive.cursor, active_season: archive.season }) })
     if (pathname.endsWith('/state')) return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ snapshot: archive }) })
