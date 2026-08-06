@@ -4,7 +4,7 @@
 
 - 前端：React 18、TypeScript 5、Less、Vite 5，`base: './'`。
 - 状态：追加式世界事件 + 纯函数 reducer；Web Audio 程序化音景。
-- 远端：Cloudflare Worker + Durable Object + SQLite，由 `alteru-game-backend` Skill 部署到 `https://game.aiwaves.tech/city-of-tides`。
+- 远端：Cloudflare Worker + Durable Object + SQLite，由补充了 `dist/` 静态打包能力的 `alteru-game-backend` Skill 部署到 `https://game.aiwaves.tech/city-of-tides`；同域根路径提供前端，`/api/*` 提供世界接口。
 - 身份：AlterU 内通过 `/note/telegram/user/get/info/by/telegram_id` 读取 `name/head_url`；本地实验使用四名固定模拟旅人。
 
 ## 2. 目录结构
@@ -45,6 +45,7 @@ _qa/
 - 有 `VITE_ALTERU_API_BASE` 或 `?api_base=`：`RemoteSharedWorldGateway` 先 ensure/state，再 action；版本冲突最多重试 3 次且复用同一 `action_id`。
 - Remote Gateway 同时实现 pending grants 查询和 ack；Local Gateway 不伪造个人云存档。
 - 正常线上构建由 `.env.production` 使用 `VITE_ALTERU_API_BASE=https://game.aiwaves.tech/city-of-tides`。
+- 本次临时 Skill 副本将 `dist/` 递归编码进 Worker 的静态文件表；同事原始包若仍只输出 `API only` 占位页，后续部署前必须合并这一静态打包改动，否则会覆盖同域前端。GitHub Pages 工作流作为独立镜像保留。
 
 ### 公共援助与个人行囊
 
