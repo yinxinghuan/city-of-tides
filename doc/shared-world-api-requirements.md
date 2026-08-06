@@ -3,7 +3,7 @@
 ## 实现状态（2026-08-06）
 
 - 同事提供的 `alteru-game-backend` Skill 已用于建立本游戏专属 Cloudflare Durable Object Worker。
-- staging：`https://game.aiwaves.tech/city-of-tides-lab`；production beta：`https://game.aiwaves.tech/city-of-tides`。世界真源均为 DO SQLite，前端通过 Remote Gateway 接入。
+- staging：`https://game.aiwaves.tech/city-of-tides-lab`；production beta：`https://game.aiwaves.tech/1a2916b0-8751-4e5d-9f9b-92daf5f7c96f`。正式路径使用游戏永久 session ID，不使用可变游戏名。世界真源均为 DO SQLite，前端通过 Remote Gateway 接入。
 - 自动验收已覆盖幂等、版本冲突、6 条上限、4 人争抢 3 份物资、pending grant 查询/ack、4 人完成工程和永久锚点。前端已实现“个人存档回读确认后才 ack”的补偿闭环。
 - 生产 beta 为真实环境实验：部署 Skill 内含凭据且 CORS 反射来源，身份字段仍由客户端传入。健康接口明确返回 `identity_mode=unverified-production-beta`；生产以 `PUBLIC_BETA=true` 开放受限写入、关闭 lab 重置/强制结算，并用幂等、数量、TTL、频率和三人举报隐藏降低风险。平台提供 Worker 可验证身份后必须关闭 `PUBLIC_BETA`，改为验签后写入，并限制允许来源及轮换令牌。
 - 本文后续的平台通用 API 路径仍是长期迁移目标；当前实现路由为 `/api/world/*`。

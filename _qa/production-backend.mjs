@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-const apiBase = process.env.API_BASE || 'https://game.aiwaves.tech/city-of-tides'
+const apiBase = process.env.API_BASE || 'https://game.aiwaves.tech/1a2916b0-8751-4e5d-9f9b-92daf5f7c96f'
 const worldKey = `ship-${Date.now()}`
 
 async function api(path, init = {}) {
