@@ -128,6 +128,7 @@ export function useCityWorld() {
   return {
     archive, view, busy, notice, setNotice, activeTraveller, travellers, gatewayMode: gateway.mode,
     privateInventoryEnabled, playerInventory: grantInventory.inventory, grantSyncStatus: grantInventory.status, refreshGrants: grantInventory.refresh,
+    playerSaveLoaded: grantInventory.playerSaveLoaded, hasVisited: grantInventory.hasVisited, markVisited: grantInventory.markVisited,
     activeTravellerId, setActiveTravellerId, selectedRegionId, setSelectedRegionId,
     createTrace, reinforce, claimAid, contribute, resolveSeason, reportTrace, reset, refresh, simulateConflict,
   }

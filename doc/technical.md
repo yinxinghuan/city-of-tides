@@ -68,7 +68,7 @@ _qa/
 ### 屏幕适配、音频与多语言
 
 - 首次打开只渲染封面入口；世界数据在背景加载，按钮就绪后进入主 Shell。入口状态不写公共世界，也不改变三层多人数据。
-- `entered` 首次切换后把独立对话滚动区设置为 `scrollTop=0`；世界轮询与行动提交不再自动滚到底部。
+- `useGrantInventory()` 在同一个个人存档中保留 `hasEntered`，旧版已有 `_lastActive` 的存档同样视为曾进入。第二次打开时恢复弹窗提供两条路径：继续游戏把独立对话区设置为 `scrollHeight`；重新开始经确认后设置为 `scrollTop=0`。两条路径都不会修改公共世界；世界轮询与行动提交不再自动滚到底部。
 - 普通快捷行动调用 `submitTrace(kind, defaultCopy)` 立即提交；`submissionRef` 与 `world.busy` 共同防止连点重复。只有 `message` 与 `replyToId` 展开 textarea，并拒绝空内容。
 - 对话 DOM 固定为世界背景、当前区域（含锚点/工程）、有效痕迹；行动区在独立 footer 中显示 busy 与成功/错误反馈。
 - Shell 为单列 CSS Grid，唯一列使用 `minmax(0,1fr)`；720 px 以下占满 `100dvh`。

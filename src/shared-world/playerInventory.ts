@@ -18,7 +18,7 @@ export function normalizePlayerSave(candidate: unknown): CityPlayerSave {
     }))
     .filter((item) => item.quantity > 0)
   inventory.forEach((item) => item.receiptIds.forEach((id) => applied.add(id)))
-  return { schemaVersion: 1, inventory, appliedGrantReceiptIds: [...applied], ...(value._lastActive ? { _lastActive: value._lastActive } : {}) }
+  return { schemaVersion: 1, inventory, appliedGrantReceiptIds: [...applied], ...(value.hasEntered ? { hasEntered: true } : {}), ...(value._lastActive ? { _lastActive: value._lastActive } : {}) }
 }
 
 export function applyPendingGrants(save: CityPlayerSave, receipts: PendingGrantReceipt[]): CityPlayerSave {

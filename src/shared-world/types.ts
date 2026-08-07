@@ -158,6 +158,7 @@ export interface CityPlayerSave {
   schemaVersion: 1
   inventory: PlayerInventoryItem[]
   appliedGrantReceiptIds: string[]
+  hasEntered?: boolean
   _lastActive?: number
 }
 

@@ -60,6 +60,8 @@ export default function CityOfTidesShell() {
   const [drawerTab, setDrawerTab] = useState<DrawerTab>('regions')
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null)
   const [entered, setEntered] = useState(false)
+  const [resumeDialogDismissed, setResumeDialogDismissed] = useState(false)
+  const [confirmResumeRestart, setConfirmResumeRestart] = useState(false)
   const [composerOpen, setComposerOpen] = useState(false)
   const [submittingKind, setSubmittingKind] = useState<TraceKind | null>(null)
   const [message, setMessage] = useState('')
@@ -69,13 +71,19 @@ export default function CityOfTidesShell() {
   const feedRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const submissionRef = useRef(false)
+  const resumeAtLatest = useRef(false)
   const labMode = useMemo(() => new URLSearchParams(window.location.search).get('lab') === '1', [])
   const coverImage = useMemo(() => new URL('./poster.png', document.baseURI).href, [])
   const travellersById = useMemo(() => new Map(world.travellers.map((item) => [item.id, item])), [world.travellers])
 
   useEffect(() => {
     if (!entered || !world.view) return
-    requestAnimationFrame(() => feedRef.current?.scrollTo({ top: 0, behavior: 'auto' }))
+    requestAnimationFrame(() => {
+      const feed = feedRef.current
+      if (!feed) return
+      feed.scrollTo({ top: resumeAtLatest.current ? feed.scrollHeight : 0, behavior: 'auto' })
+      resumeAtLatest.current = false
+    })
   }, [entered])
 
   useEffect(() => {
@@ -87,7 +95,19 @@ export default function CityOfTidesShell() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  if (!entered) return <main className="ct-stage ct-stage--entry">
+  if (!entered) {
+    const entryReady = Boolean(world.archive && world.view && world.playerSaveLoaded)
+    const showResumeDialog = world.playerSaveLoaded && world.hasVisited && !resumeDialogDismissed
+    const enter = (latest: boolean) => {
+      if (!entryReady) return
+      resumeAtLatest.current = latest
+      setResumeDialogDismissed(true)
+      setConfirmResumeRestart(false)
+      world.markVisited()
+      audio.play('district')
+      setEntered(true)
+    }
+    return <main className="ct-stage ct-stage--entry">
     <section className="ct-entry">
       <figure className="ct-entry__poster"><img src={coverImage} alt={t('coverAlt')} draggable={false}/><figcaption>{t('entryEyebrow')}</figcaption></figure>
       <div className="ct-entry__copy">
@@ -95,10 +115,15 @@ export default function CityOfTidesShell() {
         <h1>{t('title')}</h1>
         <p className="ct-entry__promise">{t('subtitle')}</p>
         <div className="ct-entry__background"><span>{t('worldBackground')}</span><h2>{t('worldBackgroundTitle')}</h2><p>{t('worldBackgroundBodyA')}</p><p>{t('worldBackgroundBodyB')}</p></div>
-        <button type="button" disabled={!world.archive || !world.view} onClick={() => { if (!world.archive || !world.view) return; audio.play('district'); setEntered(true) }}><WaveIcon/><span>{world.archive && world.view ? t('enterCity') : t('enterLoading')}</span></button>
+        <button type="button" disabled={!entryReady} onClick={() => enter(false)}><WaveIcon/><span>{entryReady ? t('enterCity') : t('enterLoading')}</span></button>
       </div>
     </section>
+    {showResumeDialog && <div className="ct-resume-dialog" role="presentation"><section role="dialog" aria-modal="true" aria-labelledby="ct-resume-title">
+      <small>{confirmResumeRestart ? t('resumeRestart') : t('entryEyebrow')}</small><h2 id="ct-resume-title">{t('resumeTitle')}</h2><p>{t(confirmResumeRestart ? 'resumeRestartWarning' : 'resumeDescription')}</p>
+      {!confirmResumeRestart ? <><button type="button" className="ct-resume-dialog__primary" autoFocus onClick={() => enter(true)}>{t('resumeContinue')}<WaveIcon/></button><button type="button" className="ct-resume-dialog__secondary" onClick={() => setConfirmResumeRestart(true)}>{t('resumeRestart')}</button></> : <><button type="button" className="ct-resume-dialog__primary" onClick={() => enter(false)}>{t('resumeRestartConfirm')}</button><button type="button" className="ct-resume-dialog__secondary" autoFocus onClick={() => setConfirmResumeRestart(false)}>{t('resumeRestartCancel')}</button></>}
+    </section></div>}
   </main>
+  }
 
   if (!world.archive || !world.view) return <main className="ct-loading"><i/><span/><i/></main>
 

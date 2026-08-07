@@ -29,12 +29,30 @@ export function useGrantInventory(gateway: SharedWorldGateway, userId: string, e
   const [mirror, setMirror] = useState<CityPlayerSave | undefined>(undefined)
   const [status, setStatus] = useState<GrantSyncStatus>(enabled ? 'idle' : 'unavailable')
   const syncing = useRef(false)
+  const pendingVisit = useRef(false)
 
   useEffect(() => {
     if (mirror === undefined && savedData !== undefined) setMirror(normalizePlayerSave(savedData ?? emptyPlayerSave()))
   }, [mirror, savedData])
 
   useEffect(() => { if (!enabled) setStatus('unavailable') }, [enabled])
+
+  const markVisited = useCallback(() => {
+    if (mirror === undefined) { pendingVisit.current = true; return }
+    if (mirror.hasEntered) return
+    const next = { ...mirror, hasEntered: true }
+    setMirror(next)
+    persist(next)
+  }, [mirror, persist])
+
+  useEffect(() => {
+    if (mirror === undefined || !pendingVisit.current) return
+    pendingVisit.current = false
+    if (mirror.hasEntered) return
+    const next = { ...mirror, hasEntered: true }
+    setMirror(next)
+    persist(next)
+  }, [mirror, persist])
 
   const reconcile = useCallback(async () => {
     if (!enabled || mirror === undefined || syncing.current || !telegramId || String(telegramId) !== String(userId)) return
@@ -80,5 +98,8 @@ export function useGrantInventory(gateway: SharedWorldGateway, userId: string, e
     inventory: enabled && mirror ? mirror.inventory : [],
     status,
     refresh: reconcile,
+    playerSaveLoaded: mirror !== undefined,
+    hasVisited: Boolean(mirror?.hasEntered || mirror?._lastActive),
+    markVisited,
   }
 }
