@@ -30,7 +30,16 @@ export interface StatDefinition {
   maxDelta?: number
 }
 export interface SkillDefinition { id: string; label: string; value: number }
-export interface CharacterDefinition { id: string; name: string; role: string; vitality: number; stress: number; skills: SkillDefinition[]; detail?: string; lore?: string }
+export type CharacterStatus = 'known' | 'companion' | 'departed'
+export interface CharacterDefinition { id: string; name: string; role: string; vitality: number; stress: number; skills: SkillDefinition[]; detail?: string; lore?: string; initialStatus?: CharacterStatus }
+export interface StoryCharacter extends CharacterDefinition {
+  status: CharacterStatus
+  origin: 'cartridge' | 'generated'
+  lastKnownLocation?: string
+  updatedAtScene: number
+  joinedAtScene?: number
+  leftAtScene?: number
+}
 export interface Choice { id: string; label: string }
 export type ImageBlockStatus = 'idle' | 'queued' | 'generating' | 'ready' | 'failed'
 export const ITEM_IMAGE_STYLE_VERSION = 2
@@ -51,7 +60,7 @@ export interface InventoryItem {
   imageUrl?: string
   imageStyleVersion?: number
 }
-export interface RelationshipEvent { id: string; actor: string; axis: string; delta: number; source: string }
+export interface RelationshipEvent { id: string; actor: string; characterId?: string; axis: string; delta: number; source: string }
 
 export interface StoryDirector {
   mode: 'guided' | 'open-world'
@@ -97,6 +106,7 @@ export interface StoryCartridge {
   drawerLabels: Record<DrawerId, string>
   opening: { location: string; time: string; objective: string; imagePrompt: string; blocks: StoryBlock[]; choices: Choice[] }
   characters: CharacterDefinition[]
+  initialPartyMemberIds?: string[]
   initialMap: MapNode[]
   initialInventory: InventoryItem[]
   demoTurns: DemoTurn[]
@@ -105,7 +115,7 @@ export interface StoryCartridge {
 export interface DemoTurn { match: string[]; content: string; imagePrompt?: string }
 
 export interface StorySave {
-  version: 4
+  version: 5
   cartridgeId: CartridgeId
   locale: Locale
   remoteChatId?: string
@@ -119,6 +129,8 @@ export interface StorySave {
   choices: Choice[]
   map: MapNode[]
   inventory: InventoryItem[]
+  characters: StoryCharacter[]
+  partyMemberIds: string[]
   relationships: RelationshipEvent[]
   sessionEnded: boolean
   lastActionId?: string
@@ -140,7 +152,8 @@ export type ParsedCommand =
   | { type: 'map_update'; location: string; connectedTo?: string; detail?: string; lore?: string; facts?: string[] }
   | { type: 'inventory'; action: 'add' | 'remove'; item: string; count: number; rarity?: 'common' | 'rare' | 'legendary'; detail?: string; effect?: string; lore?: string; metrics?: EntityMetric[]; imagePrompt?: string }
   | { type: 'reputation'; npc: string; action: string }
-  | { type: 'party_change'; character: string; change: 'add' | 'remove' }
+  | { type: 'character_update'; characterId?: string; character: string; role?: string; detail?: string; lore?: string; vitality?: number; stress?: number; skills?: SkillDefinition[] }
+  | { type: 'party_change'; characterId?: string; character: string; change: 'add' | 'remove'; role?: string; detail?: string; lore?: string; vitality?: number; stress?: number; skills?: SkillDefinition[] }
   | { type: 'session_end'; reason: string }
 
 export interface ParsedScene { blocks: StoryBlock[]; commands: ParsedCommand[]; raw: string }

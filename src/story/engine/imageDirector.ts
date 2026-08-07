@@ -76,9 +76,8 @@ export function chooseSceneImage(
 ): SceneImageDecision {
   const proposal = aiPrompt?.trim()
   if (proposal) {
-    const direction = cartridge.sceneImageDirection ?? `${cartridge.theme.material} story-world editorial illustration`
     return {
-      prompt: `${proposal}. Follow this cartridge art direction: ${direction}. Show only details already established in the visible story. No readable text, no letters, no logo, no UI, 4:3.`,
+      prompt: buildFallbackPrompt(cartridge, next, parsed, 'cadence'),
       source: 'ai',
       reason: 'ai-proposal',
     }

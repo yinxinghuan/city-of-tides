@@ -1,4 +1,4 @@
-import type { ImageBlockStatus, ParsedScene, StoryBlock, StoryCartridge, StorySave } from '../types'
+import type { CharacterDefinition, ImageBlockStatus, ParsedCommand, ParsedScene, StoryBlock, StoryCartridge, StoryCharacter, StorySave } from '../types'
 import { t } from '../i18n'
 import { chooseSceneImage } from './imageDirector'
 
@@ -7,15 +7,152 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 export function createInitialSave(cartridge: StoryCartridge, remoteChatId?: string): StorySave {
+  const initialPartyMemberIds = cartridge.initialPartyMemberIds ?? cartridge.characters.filter((character) => character.initialStatus === 'companion').map((character) => character.id)
   return {
-    version: 4, cartridgeId: cartridge.id, locale: cartridge.locale, remoteChatId, entered: false, scene: 0,
+    version: 5, cartridgeId: cartridge.id, locale: cartridge.locale, remoteChatId, entered: false, scene: 0,
     location: cartridge.opening.location, time: cartridge.opening.time, objective: cartridge.opening.objective,
     stats: Object.fromEntries(cartridge.statDefinitions.map((stat) => [stat.id, stat.initial])),
     blocks: [...cartridge.opening.blocks, createImageBlock('image-0', cartridge.opening.location, cartridge.opening.imagePrompt, 'idle')],
     choices: cartridge.opening.choices, map: cartridge.initialMap.map((node) => ({ ...node, visited: node.visited ?? Boolean(node.current), facts: node.facts ? [...node.facts] : undefined })),
-    inventory: cartridge.initialInventory.map((item) => ({ ...item, metrics: item.metrics?.map((metric) => ({ ...metric })), imageStatus: item.imageUrl ? 'ready' : 'idle' })), relationships: [],
+    inventory: cartridge.initialInventory.map((item) => ({ ...item, metrics: item.metrics?.map((metric) => ({ ...metric })), imageStatus: item.imageUrl ? 'ready' : 'idle' })),
+    characters: cartridge.characters.map((character) => {
+      const state = characterFromDefinition(character)
+      if (initialPartyMemberIds.includes(state.id)) state.status = 'companion'
+      return state
+    }),
+    partyMemberIds: initialPartyMemberIds,
+    relationships: [],
     sessionEnded: false,
   }
+}
+
+type CharacterCommand = Extract<ParsedCommand, { type: 'character_update' | 'party_change' }>
+
+function characterFromDefinition(character: CharacterDefinition): StoryCharacter {
+  return {
+    ...character,
+    skills: character.skills.map((skill) => ({ ...skill })),
+    status: character.initialStatus ?? 'known', origin: 'cartridge', updatedAtScene: 0,
+  }
+}
+
+function normalizedName(value: string): string {
+  return value.trim().toLocaleLowerCase().replace(/[\s·•._-]+/g, '')
+}
+
+function resolveCharacter(save: StorySave, command: CharacterCommand, index: number, cartridge: StoryCartridge): StoryCharacter {
+  const byId = command.characterId ? save.characters.find((character) => character.id === command.characterId) : undefined
+  const byName = save.characters.find((character) => normalizedName(character.name) === normalizedName(command.character))
+  const existing = byId && normalizedName(byId.name) === normalizedName(command.character) ? byId : byName
+  if (existing) {
+    existing.role = command.role ?? existing.role
+    existing.detail = command.detail ?? existing.detail
+    existing.lore = command.lore ?? existing.lore
+    existing.vitality = command.vitality == null ? existing.vitality : clamp(command.vitality, 0, 100)
+    existing.stress = command.stress == null ? existing.stress : clamp(command.stress, 0, 100)
+    existing.skills = command.skills?.map((skill) => ({ ...skill })) ?? existing.skills
+    existing.lastKnownLocation = save.location
+    existing.updatedAtScene = save.scene
+    return existing
+  }
+  const created: StoryCharacter = {
+    id: `npc-${save.scene}-${index}`,
+    name: command.character,
+    role: command.role ?? t(cartridge.locale, command.type === 'party_change' && command.change === 'add' ? 'companion' : 'knownPerson'),
+    vitality: clamp(command.vitality ?? 100, 0, 100),
+    stress: clamp(command.stress ?? 0, 0, 100),
+    skills: command.skills?.map((skill) => ({ ...skill })) ?? [],
+    detail: command.detail,
+    lore: command.lore,
+    status: 'known', origin: 'generated', lastKnownLocation: save.location, updatedAtScene: save.scene,
+  }
+  save.characters.push(created)
+  return created
+}
+
+function hasVisibleDeparture(parsed: ParsedScene, characterName: string): boolean {
+  const visible = parsed.blocks.map((block) => `${block.speaker ?? ''} ${block.text}`).join('\n')
+  if (!visible.includes(characterName)) return false
+  return /离开|离队|分开|告别|留下|失踪|死亡|独自前往|leave|depart|separat|farewell|stay behind|missing|died|dead|goes alone/i.test(visible)
+}
+
+type LegacyCharacterState = Pick<StorySave, 'blocks' | 'relationships'> & Partial<Pick<StorySave, 'characters' | 'partyMemberIds'>>
+
+export function normalizeCharacterState(candidate: LegacyCharacterState, cartridge: StoryCartridge): Pick<StorySave, 'characters' | 'partyMemberIds' | 'relationships'> {
+  const staticById = new Map(cartridge.characters.map((character) => [character.id, character]))
+  const inputCharacters = Array.isArray(candidate.characters) ? candidate.characters : []
+  const characters: StoryCharacter[] = inputCharacters.map((character) => {
+    const definition = staticById.get(character.id)
+    return {
+      ...definition, ...character,
+      name: character.name || definition?.name || character.id,
+      role: character.role || definition?.role || t(cartridge.locale, 'knownPerson'),
+      vitality: clamp(Number.isFinite(character.vitality) ? character.vitality : definition?.vitality ?? 100, 0, 100),
+      stress: clamp(Number.isFinite(character.stress) ? character.stress : definition?.stress ?? 0, 0, 100),
+      skills: (character.skills ?? definition?.skills ?? []).map((skill) => ({ ...skill })),
+      status: character.status === 'companion' || character.status === 'departed' ? character.status : 'known',
+      origin: character.origin === 'generated' ? 'generated' : 'cartridge',
+      updatedAtScene: Number.isFinite(character.updatedAtScene) ? character.updatedAtScene : 0,
+    }
+  })
+  cartridge.characters.forEach((definition) => {
+    if (!characters.some((character) => character.id === definition.id)) characters.push(characterFromDefinition(definition))
+  })
+  const findOrCreate = (name: string, id?: string): StoryCharacter => {
+    const found = (id ? characters.find((character) => character.id === id) : undefined)
+      ?? characters.find((character) => normalizedName(character.name) === normalizedName(name))
+    if (found) return found
+    const created: StoryCharacter = {
+      id: id && !characters.some((character) => character.id === id) ? id : `legacy-npc-${characters.length + 1}`,
+      name, role: t(cartridge.locale, 'knownPerson'), vitality: 100, stress: 0, skills: [],
+      status: 'known', origin: 'generated', updatedAtScene: 0,
+    }
+    characters.push(created)
+    return created
+  }
+  const explicitParty = new Set(Array.isArray(candidate.partyMemberIds) ? candidate.partyMemberIds.filter((id) => characters.some((character) => character.id === id)) : [])
+  if (!candidate.partyMemberIds) {
+    const initialPartyIds = cartridge.initialPartyMemberIds ?? cartridge.characters.filter((character) => character.initialStatus === 'companion').map((character) => character.id)
+    initialPartyIds.forEach((id) => explicitParty.add(id))
+    characters.filter((character) => character.status === 'companion').forEach((character) => explicitParty.add(character.id))
+    candidate.blocks.forEach((block) => {
+      if (block.kind !== 'event' || !block.id.startsWith('effect-')) return
+      const encodedChange = block.data?.partyChange
+      const encodedId = typeof block.data?.characterId === 'string' ? block.data.characterId : undefined
+      let name = block.text.trim()
+      let change: 'add' | 'remove' | undefined = encodedChange === 'add' || encodedChange === 'remove' ? encodedChange : undefined
+      const suffixes: Array<[string, 'add' | 'remove']> = [
+        ['加入了同行者', 'add'], ['离开了同行者', 'remove'], [' joined the party', 'add'], [' left the party', 'remove'],
+      ]
+      if (!change) {
+        const suffix = suffixes.find(([text]) => name.endsWith(text))
+        if (!suffix) return
+        name = name.slice(0, -suffix[0].length).trim()
+        change = suffix[1]
+      } else {
+        const suffix = suffixes.find(([text]) => name.endsWith(text))
+        if (suffix) name = name.slice(0, -suffix[0].length).trim()
+      }
+      if (!name && !encodedId) return
+      const character = findOrCreate(name || encodedId!, encodedId)
+      if (change === 'add') {
+        explicitParty.add(character.id)
+        character.status = 'companion'
+      } else {
+        explicitParty.delete(character.id)
+        character.status = 'departed'
+      }
+    })
+  }
+  const relationships = (candidate.relationships ?? []).map((event) => {
+    const character = event.characterId ? characters.find((entry) => entry.id === event.characterId) : findOrCreate(event.actor)
+    return { ...event, characterId: character?.id }
+  })
+  characters.forEach((character) => {
+    if (explicitParty.has(character.id)) character.status = 'companion'
+    else if (character.status === 'companion') character.status = 'known'
+  })
+  return { characters, partyMemberIds: [...explicitParty], relationships }
 }
 
 export function createImageBlock(id: string, location: string, prompt: string, status: ImageBlockStatus, url = '', metadata?: Record<string, string>): StoryBlock {
@@ -60,6 +197,7 @@ export function localizeKnownState(save: StorySave, from: StoryCartridge, to: St
   const locationId = sourceNodeByLabel.get(save.location)
   const openingLocation = save.location === from.opening.location ? to.opening.location : undefined
   const inventoryById = new Map(to.initialInventory.map((item) => [item.id, item]))
+  const charactersById = new Map(to.characters.map((character) => [character.id, character]))
   return {
     ...save,
     locale: to.locale,
@@ -73,6 +211,10 @@ export function localizeKnownState(save: StorySave, from: StoryCartridge, to: St
         ...item, label: target.label, detail: target.detail ?? item.detail, effect: target.effect ?? item.effect,
         lore: target.lore ?? item.lore, metrics: target.metrics ?? item.metrics, imagePrompt: target.imagePrompt ?? item.imagePrompt,
       } : item
+    }),
+    characters: save.characters.map((character) => {
+      const target = charactersById.get(character.id)
+      return target ? { ...character, name: target.name, role: target.role, detail: target.detail ?? character.detail, lore: target.lore ?? character.lore, skills: target.skills.map((skill) => ({ ...skill })) } : character
     }),
   }
 }
@@ -93,6 +235,8 @@ export function applyParsedScene(
     blocks: [...save.blocks, { id: `action-${save.scene + 1}`, kind: 'event', text: actionId }, ...parsed.blocks],
     choices: [], relationships: [...save.relationships],
     map: save.map.map((node) => ({ ...node })), inventory: save.inventory.map((item) => ({ ...item })),
+    characters: save.characters.map((character) => ({ ...character, skills: character.skills.map((skill) => ({ ...skill })) })),
+    partyMemberIds: [...save.partyMemberIds],
     stats: { ...save.stats },
     sessionEnded: false, lastActionId: actionId,
   }
@@ -155,10 +299,27 @@ export function applyParsedScene(
     }
     if (command.type === 'reputation') {
       const delta = /betray|hostile|distrust|拒绝|背叛/i.test(command.action) ? -1 : 1
-      next.relationships.push({ id: effectId, actor: command.npc, axis: command.action, delta, source: actionId })
+      const character = resolveCharacter(next, { type: 'character_update', character: command.npc }, index, cartridge)
+      next.relationships.push({ id: effectId, actor: character.name, characterId: character.id, axis: command.action, delta, source: actionId })
       effects.push(changeBlock(effectId, `${command.npc} · ${delta > 0 ? t(cartridge.locale, 'warmer') : t(cartridge.locale, 'colder')}`, { delta }))
     }
-    if (command.type === 'party_change') effects.push({ id: effectId, kind: 'event', text: `${command.character}${t(cartridge.locale, command.change === 'add' ? 'joined' : 'left')}` })
+    if (command.type === 'character_update') resolveCharacter(next, command, index, cartridge)
+    if (command.type === 'party_change') {
+      const character = resolveCharacter(next, command, index, cartridge)
+      if (command.change === 'add') {
+        if (!next.partyMemberIds.includes(character.id)) next.partyMemberIds.push(character.id)
+        character.status = 'companion'
+        character.joinedAtScene ??= next.scene
+        character.leftAtScene = undefined
+      } else {
+        if (!hasVisibleDeparture(parsed, character.name)) return
+        next.partyMemberIds = next.partyMemberIds.filter((id) => id !== character.id)
+        character.status = 'departed'
+        character.leftAtScene = next.scene
+      }
+      character.updatedAtScene = next.scene
+      effects.push({ id: effectId, kind: 'event', text: `${character.name}${t(cartridge.locale, command.change === 'add' ? 'joined' : 'left')}`, data: { characterId: character.id, partyChange: command.change } })
+    }
     if (command.type === 'session_end') {
       next.sessionEnded = true
       effects.push({ id: effectId, kind: 'summary', text: command.reason })

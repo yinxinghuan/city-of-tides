@@ -1,6 +1,7 @@
 import type { AdapterResult, StoryAdapter } from '../types'
 import { t } from '../i18n'
 import { extractSceneImagePrompt } from '../engine/protocol'
+import { buildWorldContext, partyContinuityContract } from '../engine/worldContext'
 
 const endpoint = import.meta.env.VITE_STORY_API_ORIGIN || 'https://uu545921-zfkm-aec62664.westb.seetacloud.com:8443'
 
@@ -23,7 +24,11 @@ export const remoteAdapter: StoryAdapter = {
       : `\n\n[语言与格式要求：请用简体中文回复，并保持所有协议命令标签及语法不变。除非这是真正的章节节点，否则结尾必须用这一机器可读格式给出恰好三个行动：[choices: "行动一"|"行动二"|"行动三"]。按钮行动必须与正文描述的决定一致。遇到具有明显视觉价值的新地点、发现、关系转折、重大结果或阶段节点时，用 [image_prompt: "English cinematic visible scene, no text, no UI, 4:3"] 提议一张场景图；只画正文已经公开的事实，并遵循这一画风：${sceneImageDirection}。普通对话不要提议。]`
     const response = await fetch(`${endpoint}/api/generate`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chatId, userMessage: `${action}${languageInstruction}`, streaming: false }),
+      body: JSON.stringify({
+        chatId,
+        userMessage: `AUTHORITATIVE_WORLD_STATE_JSON:\n${JSON.stringify(buildWorldContext(context))}\n\n${partyContinuityContract}\n\nPLAYER_ACTION:\n${action}${languageInstruction}`,
+        streaming: false,
+      }),
     })
     if (!response.ok || !response.body) throw new Error(t(context.locale, 'remoteUnavailableError', { n: response.status }))
     const reader = response.body.getReader()

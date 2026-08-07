@@ -1,50 +1,9 @@
-import type { AdapterContext, AdapterResult, StoryAdapter, StoryBlock } from '../types'
+import type { AdapterContext, AdapterResult, StoryAdapter } from '../types'
 import { t } from '../i18n'
 import { extractSceneImagePrompt } from '../engine/protocol'
+import { buildWorldContext, partyContinuityContract } from '../engine/worldContext'
 
 const endpoint = 'https://chat.aiwaves.tech/aigram/api/game-chat'
-const maxRecentBlocks = 20
-
-function visibleHistory(blocks: StoryBlock[]) {
-  return blocks
-    .filter((block) => block.kind !== 'image')
-    .slice(-maxRecentBlocks)
-    .map((block) => ({
-      kind: block.kind,
-      speaker: block.speaker,
-      tone: block.tone,
-      text: block.text,
-    }))
-}
-function worldContext(context: AdapterContext) {
-  const { cartridge, save } = context
-  return {
-    game: {
-      title: cartridge.copy.title,
-      premise: cartridge.copy.promise,
-      language: context.locale === 'zh' ? 'Simplified Chinese' : 'English',
-      director: cartridge.director,
-    },
-    current: {
-      scene: save.scene,
-      location: save.location,
-      time: save.time,
-      objective: save.objective,
-      stats: cartridge.statDefinitions.map((definition) => ({
-        id: definition.id,
-        label: definition.label,
-        value: save.stats[definition.id] ?? definition.initial,
-        min: definition.min,
-        max: definition.max,
-      })),
-      characters: cartridge.characters,
-      map: save.map,
-      inventory: save.inventory,
-      relationships: save.relationships.slice(-20),
-      recentStory: visibleHistory(save.blocks),
-    },
-  }
-}
 
 function systemPrompt(context: AdapterContext): string {
   const language = context.locale === 'zh'
@@ -77,6 +36,8 @@ Use dialogue lines only in this form:
 [Character] [main] [tone]: "Dialogue"
 ${directorContract}
 
+${partyContinuityContract}
+
 Allowed protocol commands, each on its own line:
 [choices: "Choice one"|"Choice two"|"Choice three"]
 [widget: id, value: NUMBER]
@@ -86,7 +47,8 @@ Allowed protocol commands, each on its own line:
 [map_update: new_location="Place" connected_to="Previous place" detail="Current visible condition" lore="Why this place matters in the world" facts="Known fact one|Known fact two"]
 [inventory: action="add|remove" item="Item" count="NUMBER" rarity="common|rare|legendary" detail="What it physically is" effect="Concrete use and limitation" lore="Traceable origin or world meaning" metrics="Attribute: value|Attribute: value" image_prompt="English object-only illustration prompt, no text, square"]
 [reputation: npc="Name" action="trusted|distrusted|helped|betrayed"]
-[party_change: character="Name" change="add|remove"]
+[character_update: character_id="Reuse an existing id when known" character="Name" role="Role" detail="Current visible facts" lore="Durable background" vitality="0..100" stress="0..100" skills="Ability: value|Ability: value"]
+[party_change: character_id="Reuse an existing id when known" character="Name" change="add|remove" role="Role" detail="Current visible facts" lore="Durable background" vitality="0..100" stress="0..100" skills="Ability: value|Ability: value"]
 [session_end: reason="A genuine chapter checkpoint"]
 [image_prompt: "English cinematic scene description, no text, no UI, 4:3"]
 
@@ -110,7 +72,7 @@ async function generateTurn(action: string, context: AdapterContext): Promise<Ad
           { role: 'system', content: systemPrompt(context) },
           {
             role: 'user',
-            content: `WORLD_STATE_JSON:\n${JSON.stringify(worldContext(context))}\n\nPLAYER_ACTION:\n${action}`,
+            content: `WORLD_STATE_JSON:\n${JSON.stringify(buildWorldContext(context))}\n\nPLAYER_ACTION:\n${action}`,
           },
         ],
       }),

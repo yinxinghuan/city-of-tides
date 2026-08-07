@@ -1,9 +1,9 @@
 import { t } from '../i18n'
-import type { EntityMetric, Locale, ParsedCommand, ParsedScene, StoryBlock } from '../types'
+import type { EntityMetric, Locale, ParsedCommand, ParsedScene, SkillDefinition, StoryBlock } from '../types'
 
 const commandNames = new Set([
   'choices', 'widget', 'skill_check', 'state', 'clock', 'map_update', 'inventory',
-  'reputation', 'party_change', 'session_end',
+  'reputation', 'character_update', 'party_change', 'session_end',
 ])
 
 function uid(prefix: string, index: number, text: string): string {
@@ -77,6 +77,24 @@ function parseMetrics(value: string | undefined): EntityMetric[] | undefined {
   return metrics?.length ? metrics : undefined
 }
 
+function optionalNumber(value: string | undefined): number | undefined {
+  if (value == null || value === '') return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function parseSkills(value: string | undefined): SkillDefinition[] | undefined {
+  const skills = parseList(value)?.map((entry, index) => {
+    const divider = entry.search(/[:=]/)
+    if (divider <= 0) return null
+    const label = entry.slice(0, divider).trim()
+    const skillValue = optionalNumber(entry.slice(divider + 1).trim())
+    if (!label || skillValue == null) return null
+    return { id: `skill-${index}-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || index}`, label, value: skillValue }
+  }).filter((entry): entry is SkillDefinition => Boolean(entry))
+  return skills?.length ? skills : undefined
+}
+
 function parseCommand(name: string, source: string, locale: Locale): ParsedCommand | null {
   const data = attrs(source)
   switch (name) {
@@ -105,7 +123,14 @@ function parseCommand(name: string, source: string, locale: Locale): ParsedComma
       } : null
     }
     case 'reputation': return data.npc ? { type: 'reputation', npc: data.npc, action: data.action ?? 'changed' } : null
-    case 'party_change': return data.character ? { type: 'party_change', character: data.character, change: data.change === 'remove' ? 'remove' : 'add' } : null
+    case 'character_update': return data.character ? {
+      type: 'character_update', characterId: data.character_id, character: data.character, role: data.role,
+      detail: data.detail, lore: data.lore, vitality: optionalNumber(data.vitality), stress: optionalNumber(data.stress), skills: parseSkills(data.skills),
+    } : null
+    case 'party_change': return data.character ? {
+      type: 'party_change', characterId: data.character_id, character: data.character, change: data.change === 'remove' ? 'remove' : 'add',
+      role: data.role, detail: data.detail, lore: data.lore, vitality: optionalNumber(data.vitality), stress: optionalNumber(data.stress), skills: parseSkills(data.skills),
+    } : null
     case 'session_end': return { type: 'session_end', reason: data.reason ?? t(locale, 'chapterPaused') }
     default: return null
   }

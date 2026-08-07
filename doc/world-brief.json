@@ -1,28 +1,104 @@
 {
-  "schemaVersion": 1,
-  "id": "city-of-tides",
-  "title": { "zh": "潮痕之城", "en": "City of Tides" },
-  "premise": {
-    "zh": "一座周期性被海水淹没的旧城保存着最近旅人的行动，后来者可以回应、延续或改变这些痕迹。",
-    "en": "A periodically flooded city carries the actions of recent travellers, allowing later visitors to answer, continue, or alter their traces."
+  "$schema": "./world-brief.schema.json",
+  "game": {
+    "id": "city-of-tides",
+    "titleZh": "潮痕之城",
+    "titleEn": "City of Tides",
+    "mode": "open-world",
+    "languages": ["zh", "en"]
   },
-  "worldRules": [
-    "潮汐季固定持续七天",
-    "普通痕迹会随时间衰减",
-    "三名不同旅人的支持可以在本季锚定一道痕迹",
-    "AI 描述已确认事件，但不能直接改写世界数值",
-    "当前实验世界只由最近六位玩家的最新档案重建"
+  "experience": {
+    "playerFantasy": "你是阔别故乡七年的归乡者，能够循着海水留在铜与石上的回声，自由探索一座每天在陆地与水城之间变化的城市。",
+    "emotionalPromise": "从重返故乡的惊奇与温暖出发，经历追索、相逢、背叛和失去，最终亲手决定家人与整座城市如何面对下一次大潮。",
+    "commonKnowledgeBoundary": "世界以海港、灯塔、车站、市场和档案馆等大众熟悉的空间为基础，只增加潮水保存回声这一条核心奇幻规则，不要求专业知识。",
+    "openingObjective": "追查一段由失踪姐姐从明天寄来的录音，并在第七次大潮前找到当年四十七名失踪者所在的零号潮门。"
+  },
+  "world": {
+    "fixedRules": [
+      "城市每日经历高低两次潮相；低潮开放街道、地窖和轨道，高潮开放水路、屋顶码头和漂浮设施。",
+      "第一次浸入海水的强烈言语与行动会在潮铜和潮石上留下最多七个潮相的回声，只有被钟楼锚定的事实能够永久保留。",
+      "人物只知道自己亲历、听闻或从可信记录中读到的事情；同伴、物品、伤势、承诺和已揭示真相不能被后续叙述静默改写。",
+      "第七次大潮由主线节点推进而非现实倒计时；玩家可以自由探索，游戏不会因为闲逛而突然强制结束。"
+    ],
+    "generationRules": [
+      "AI可以生成区域内的小地点、居民委托、传闻、天气、潮兽、宝物和旅途中发生的关系事件，但不能改写四十七人失踪案的真相。",
+      "每次行动必须改变位置、线索、物品、角色关系、身体状态、潮相或主线进度中的至少一项，并让正文与可选行动描述同一个当前局面。",
+      "探索场景优先允许观察、交涉、潜行、攀行、利用环境、使用物品或正面冲突，不把战斗设为唯一解法。",
+      "失败造成受伤、物资损失、路线改变、人物不信任或潮相推进，但不删除存档，也不让关键主线永久断裂。"
+    ],
+    "maxActiveThreads": 3
+  },
+  "stats": [
+    {
+      "id": "vitality",
+      "labelZh": "体力",
+      "labelEn": "Vitality",
+      "min": 0,
+      "max": 100,
+      "initial": 72,
+      "display": "bar",
+      "dangerDirection": "low",
+      "warningAt": 25,
+      "dangerAt": 0,
+      "maxDelta": 24
+    },
+    {
+      "id": "tide-breath",
+      "labelZh": "潮息",
+      "labelEn": "Tide Breath",
+      "min": 0,
+      "max": 100,
+      "initial": 40,
+      "display": "bar",
+      "dangerDirection": "low",
+      "warningAt": 20,
+      "dangerAt": 0,
+      "maxDelta": 25
+    },
+    {
+      "id": "city-bond",
+      "labelZh": "城市联结",
+      "labelEn": "City Bond",
+      "min": 0,
+      "max": 100,
+      "initial": 10,
+      "display": "bar",
+      "dangerDirection": "low",
+      "warningAt": 20,
+      "dangerAt": 0,
+      "maxDelta": 18
+    }
   ],
-  "regions": [
-    { "id": "lighthouse", "stat": "light", "initial": 42 },
-    { "id": "station", "stat": "passage", "initial": 38 },
-    { "id": "market", "stat": "supplies", "initial": 46 },
-    { "id": "archive", "stat": "memory", "initial": 35 }
+  "choiceIntents": [
+    "观察环境、追踪回声或调查线索",
+    "前往任意可达地点并用环境或物品解决障碍",
+    "与人物交涉、承担风险或自由描述自己的行动"
   ],
-  "visualDirection": "Wet civic noir: indigo water, oxidized copper, wet stone, amber civic lights, no wilderness-road imagery.",
-  "contentSafety": {
-    "publicMessageMaxLength": 120,
-    "moderationRequiredForProduction": true,
-    "realUsersAreNeverPresentedAsAICharacters": true
+  "signatureItem": {
+    "nameZh": "逆潮罗盘",
+    "nameEn": "Countertide Compass",
+    "ability": "感知附近尚未兑现的承诺与潮水回声，并在高低潮改变后指出新的可达路线。",
+    "limitOrCost": "读取强烈回声会消耗潮息；连续透支会让玩家暂时混淆自己的记忆与他人的回声。",
+    "provenance": "七年前由姐姐米拉随身携带，游戏开始时与一段标注为明日日期的录音一起寄回玩家手中。"
+  },
+  "visuals": {
+    "material": "harbor",
+    "artDirection": "cinematic coastal fantasy adventure, monumental flooded architecture, oxidized copper, deep teal water, warm human interiors, adventurous scale with intimate character emotion",
+    "entryScene": "wide dawn view of a layered coastal city changing from flooded canals to exposed streets, the returning player holding a copper compass on a ferry, one distant lighthouse beam, no readable text",
+    "sceneImageDirection": "cinematic coastal fantasy adventure with one readable action or emotional focus, consistent recurring characters, tide-dependent geography, grounded objects, no UI and no readable text",
+    "itemImageDirection": "weathered coastal adventure artifact study, oxidized copper, salt glass and dark cloth, object function visually legible, no people and no readable text"
+  },
+  "audio": {
+    "mood": "open coastal wind, distant tide bells, warm strings for companionship, low brass and water resonance for buried danger, sparse piano for family memories",
+    "bpm": 64
+  },
+  "ending": {
+    "type": "true-ending",
+    "failureConsequences": [
+      "受伤后在最近的安全屋醒来并推进一个潮相",
+      "失去一件未固定的消耗品或错过当前路线",
+      "人物暂时降低信任并要求另一种解决方式",
+      "局部区域受损但产生新的修复或营救任务"
+    ]
   }
 }

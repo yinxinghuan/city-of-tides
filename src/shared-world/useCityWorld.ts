@@ -26,7 +26,7 @@ export function useCityWorld() {
   const [notice, setNotice] = useState<Notice | null>(null)
   const [busy, setBusy] = useState(false)
   const platformTraveller: Traveller = {
-    id: profile.id || telegramId || '__alteru_guest__',
+    id: telegramId || '__alteru_guest__',
     name: profile.name,
     initials: profile.name.slice(0, 2).toUpperCase(),
     avatarUrl: profile.avatarUrl,

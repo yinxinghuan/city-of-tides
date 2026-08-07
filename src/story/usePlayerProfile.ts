@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { callAigramAPI, isInAigram, telegramId, type AigramResponse } from '../shared/runtime/bridge'
 
-interface ProfileData { id?: string | number; user_id?: string | number; name?: string; user_name?: string; head_url?: string }
+interface ProfileData { name?: string; user_name?: string; head_url?: string }
 
 export interface PlayerProfile {
-  id?: string
   name: string
   avatarUrl: string
   imageRefUrl?: string
@@ -22,7 +21,6 @@ export function usePlayerProfile(): PlayerProfile {
   const debugName = query.get('user_name')?.trim() || ''
   const fallbackAvatar = new URL('./alteru-default-avatar.jpg', document.baseURI).href
   const [profile, setProfile] = useState<PlayerProfile>(() => ({
-    id: telegramId || undefined,
     name: debugName || 'AlterU',
     avatarUrl: debugAvatar || fallbackAvatar,
     imageRefUrl: publicHttpsUrl(debugAvatar),
@@ -44,7 +42,6 @@ export function usePlayerProfile(): PlayerProfile {
         const platformAvatar = data?.head_url?.trim() || ''
         const chosenAvatar = debugAvatar || platformAvatar
         setProfile({
-          id: String(data?.id ?? data?.user_id ?? telegramId ?? ''),
           name: debugName || data?.name?.trim() || data?.user_name?.trim() || 'AlterU',
           avatarUrl: chosenAvatar || fallbackAvatar,
           imageRefUrl: publicHttpsUrl(chosenAvatar),
