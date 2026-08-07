@@ -171,7 +171,12 @@ export function parseStoryProtocol(raw: string, locale: Locale = 'zh'): ParsedSc
   let prose = raw
   for (const span of [...spans].reverse()) prose = prose.slice(0, span.start) + '\n' + prose.slice(span.end)
   prose = prose.replace(/\[[a-z_]+\s*:[^\]\n]*\]/gi, '\n')
-  const hasStructuredChoices = spans.some((span) => span.command.type === 'choices')
+  // Remove a protocol line that was cut off before its closing bracket. It is
+  // machine residue, and leaving it at the tail prevents natural-choice scan.
+  prose = prose.replace(/^\s*\[[a-z_]+\s*:.*$/gim, '\n')
+  // A truncated/empty structured tag must not suppress otherwise recoverable
+  // numbered choices in the visible prose.
+  const hasStructuredChoices = spans.some((span) => span.command.type === 'choices' && span.command.choices.length >= 2)
   const natural = hasStructuredChoices ? { prose, choices: [] } : extractNaturalChoices(prose)
   prose = natural.prose
 

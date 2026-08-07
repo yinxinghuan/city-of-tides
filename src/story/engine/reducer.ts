@@ -223,6 +223,34 @@ function changeBlock(id: string, text: string, data?: Record<string, string | nu
   return { id, kind: 'change', text, data }
 }
 
+function shortChoiceContext(value: string, maxLength: number): string {
+  const clean = value.replace(/[\n\r\t]+/g, ' ').replace(/[“”"']/g, '').trim()
+  return clean.length > maxLength ? `${clean.slice(0, maxLength - 1).trim()}…` : clean
+}
+
+function recoveryChoices(save: StorySave, cartridge: StoryCartridge): StorySave['choices'] {
+  const location = shortChoiceContext(save.location, cartridge.locale === 'zh' ? 14 : 24)
+  const objective = shortChoiceContext(save.objective, cartridge.locale === 'zh' ? 18 : 32)
+  const hasParty = save.partyMemberIds.length > 0
+  const labels = cartridge.locale === 'zh'
+    ? [
+        `观察${location || '周围'}的新变化`,
+        objective ? `追查“${objective}”的线索` : '检查与刚才行动有关的线索',
+        hasParty ? '和同行者商量下一步' : '换一种方式处理当前局面',
+      ]
+    : [
+        `Observe what changed around ${location || 'this place'}`,
+        objective ? `Trace a clue about “${objective}”` : 'Inspect clues connected to the last action',
+        hasParty ? 'Discuss the next move with your companions' : 'Try another approach to the current situation',
+      ]
+  return labels.map((label, index) => ({ id: `recovery-${save.scene}-${index}`, label }))
+}
+
+function validChoiceLabels(labels: string[]): string[] {
+  const clean = labels.map((label) => label.trim()).filter((label) => label.length >= 2 && label.length <= 96)
+  return clean.length >= 2 && clean.length <= 5 && new Set(clean).size === clean.length ? clean : []
+}
+
 export function applyParsedScene(
   save: StorySave,
   parsed: ParsedScene,
@@ -245,7 +273,12 @@ export function applyParsedScene(
 
   parsed.commands.forEach((command, index) => {
     const effectId = `effect-${next.scene}-${index}`
-    if (command.type === 'choices') next.choices = command.choices.map((label, choiceIndex) => ({ id: `${next.scene}-${choiceIndex}`, label }))
+    if (command.type === 'choices') {
+      const labels = validChoiceLabels(command.choices)
+      // Ignore malformed late tags instead of letting them erase an earlier
+      // valid choice set recovered from prose.
+      if (labels.length) next.choices = labels.map((label, choiceIndex) => ({ id: `${next.scene}-${choiceIndex}`, label }))
+    }
     if (command.type === 'widget') {
       const definition = cartridge.statDefinitions.find((stat) => stat.id === command.id)
       if (!definition) return
@@ -326,6 +359,11 @@ export function applyParsedScene(
       effects.push({ id: effectId, kind: 'summary', text: command.reason })
     }
   })
+
+  // Ordinary scenes must remain playable even when an AI response omits or
+  // truncates its machine-readable choices. A real checkpoint may still use
+  // the dedicated resume action supplied by the Composer.
+  if (!next.sessionEnded && next.choices.length < 2) next.choices = recoveryChoices(next, cartridge)
 
   const image = chooseSceneImage(save, next, parsed, cartridge, imagePrompt, imageSubject)
   next.blocks = [
