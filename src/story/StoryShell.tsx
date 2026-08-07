@@ -90,7 +90,7 @@ function TextSizeControl({ locale, value, onChange }: { locale: Locale; value: T
 }
 
 function ConversationHeader({ cartridge, engine, audio, openWorld, textSize, setTextSize }: {
-  cartridge: StoryCartridge; engine: ReturnType<typeof useStoryEngine>; audio: ReturnType<typeof useStoryAudio>; openWorld: () => void; textSize: TextSize; setTextSize: (size: TextSize) => void
+  cartridge: StoryCartridge; engine: ReturnType<typeof useStoryEngine>; audio: ReturnType<typeof useStoryAudio>; openWorld: (active?: DrawerId, detail?: WorldDetail) => void; textSize: TextSize; setTextSize: (size: TextSize) => void
 }) {
   const audioActive = audio.supported && audio.active
   return <header className="st-chat-header">
@@ -110,17 +110,18 @@ function ConversationHeader({ cartridge, engine, audio, openWorld, textSize, set
           onClick={audio.toggle}
           disabled={!audio.supported}
         ><Icon name={audioActive ? 'volume' : 'volumeOff'} /></button>
-        <button className="st-world-button" onClick={openWorld} aria-label={t(cartridge.locale, 'world')} title={t(cartridge.locale, 'world')}><Icon name="book" /><span>{t(cartridge.locale, 'world')}</span></button>
+        <button className="st-world-button" onClick={() => openWorld()} aria-label={t(cartridge.locale, 'world')} title={t(cartridge.locale, 'world')}><Icon name="book" /><span>{t(cartridge.locale, 'world')}</span></button>
       </div>
     </div>
     <div className="st-chat-stats" aria-label={t(cartridge.locale, 'stats')}>
       {cartridge.statDefinitions.map((stat) => {
         const value = engine.save.stats[stat.id] ?? stat.initial
         const presentation = statPresentation(stat, value)
-        return <div className={`st-chat-stat st-chat-stat--${stat.display ?? 'number'} is-${presentation.tone}`} key={stat.id}>
+        return <button type="button" className={`st-chat-stat st-chat-stat--${stat.display ?? 'number'} is-${presentation.tone}`} onClick={() => openWorld('party', { type: 'player', statId: stat.id })} aria-label={t(cartridge.locale, 'openStatDetails', { name: stat.label })} key={stat.id}>
           <div className="st-chat-stat__reading"><span>{stat.label}</span><strong>{value}{stat.display === 'number' && <small> / {stat.max}</small>}</strong></div>
           {stat.display === 'bar' && <div className="st-chat-stat__track" role="progressbar" aria-label={stat.label} aria-valuemin={stat.min} aria-valuemax={stat.max} aria-valuenow={value}><i style={{ width: `${presentation.percent}%` }} /><b style={{ left: `${presentation.thresholdPercent}%` }} aria-hidden="true" /></div>}
-        </div>
+          <Icon name="arrow" className="st-chat-stat__open" />
+        </button>
       })}
     </div>
   </header>
@@ -197,7 +198,7 @@ function Composer({ cartridge, engine, onAct }: { cartridge: StoryCartridge; eng
 const drawerIcons: Record<DrawerId, IconName> = { party: 'people', map: 'map', inventory: 'bag', log: 'book' }
 
 type WorldDetail =
-  | { type: 'player' }
+  | { type: 'player'; statId?: string }
   | { type: 'character'; id: string }
   | { type: 'map'; id: string }
   | { type: 'inventory'; id: string }
@@ -211,6 +212,37 @@ function DetailSection({ label, children }: { label: string; children: React.Rea
 
 function DetailMetrics({ rows }: { rows: Array<{ label: string; value: string | number }> }) {
   return <dl className="st-world-detail__metrics">{rows.map((row, index) => <div key={`${row.label}-${index}`}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}</dl>
+}
+
+function PlayerDetail({ player, save, cartridge, focusedStatId, openSection }: {
+  player: PlayerProfile; save: ReturnType<typeof useStoryEngine>['save']; cartridge: StoryCartridge; focusedStatId?: string; openSection: (id: DrawerId) => void
+}) {
+  const itemCount = save.inventory.reduce((total, item) => total + item.count, 0)
+  return <div className="st-world-detail st-player-detail">
+    <div className="st-world-detail__hero"><PlayerAvatar profile={player} locale={cartridge.locale} large /><div><h3>{player.name}</h3><p>{t(cartridge.locale, 'protagonist')}</p></div></div>
+    <DetailSection label={t(cartridge.locale, 'currentStatus')}>
+      <div className="st-player-status-list">{cartridge.statDefinitions.map((stat) => {
+        const value = save.stats[stat.id] ?? stat.initial
+        const presentation = statPresentation(stat, value)
+        return <section className={`st-player-status-card is-${presentation.tone}${focusedStatId === stat.id ? ' is-focused' : ''}`} key={stat.id}>
+          <div><span>{stat.label}</span><strong>{value}<small> / {stat.max}</small></strong></div>
+          <div className="st-player-status-card__track" role="progressbar" aria-label={stat.label} aria-valuemin={stat.min} aria-valuemax={stat.max} aria-valuenow={value}><i style={{ width: `${presentation.percent}%` }} /><b style={{ left: `${presentation.thresholdPercent}%` }} /></div>
+          <small>{stat.min} — {stat.max}</small>
+        </section>
+      })}</div>
+    </DetailSection>
+    <DetailSection label={t(cartridge.locale, 'journeyOverview')}><DetailMetrics rows={[
+      { label: t(cartridge.locale, 'here'), value: save.location },
+      { label: t(cartridge.locale, 'system'), value: save.time },
+      { label: t(cartridge.locale, 'storySegments'), value: save.scene + 1 },
+      { label: t(cartridge.locale, 'companion'), value: save.partyMemberIds.length },
+      { label: t(cartridge.locale, 'inventoryItems'), value: itemCount },
+    ]} /></DetailSection>
+    <DetailSection label={t(cartridge.locale, 'currentObjective')}><p>{save.objective}</p></DetailSection>
+    <nav className="st-world-detail__links" aria-label={t(cartridge.locale, 'openWorldSection')}>
+      {(['map', 'inventory', 'log'] as DrawerId[]).map((id) => <button type="button" onClick={() => openSection(id)} key={id}><Icon name={drawerIcons[id]} /><span>{cartridge.drawerLabels[id]}</span><Icon name="arrow" /></button>)}
+    </nav>
+  </div>
 }
 
 function characterStatusLabel(character: StoryCharacter, cartridge: StoryCartridge) {
@@ -279,11 +311,10 @@ function SystemDetail({ cartridge, engine, restart }: {
   </div>
 }
 
-function WorldDrawer({ active, setActive, cartridge, engine, close, player }: {
-  active: DrawerId; setActive: (id: DrawerId) => void; cartridge: StoryCartridge; engine: ReturnType<typeof useStoryEngine>; close: () => void; player: PlayerProfile
+function WorldDrawer({ active, setActive, detail, setDetail, cartridge, engine, close, player }: {
+  active: DrawerId; setActive: (id: DrawerId) => void; detail: WorldDetail | null; setDetail: (detail: WorldDetail | null) => void; cartridge: StoryCartridge; engine: ReturnType<typeof useStoryEngine>; close: () => void; player: PlayerProfile
 }) {
   const save = engine.save
-  const [detail, setDetail] = useState<WorldDetail | null>(null)
   const character = detail?.type === 'character' ? save.characters.find((entry) => entry.id === detail.id) : undefined
   const roster = [...save.characters].sort((left, right) => {
     const rank = { companion: 0, known: 1, departed: 2 }
@@ -305,7 +336,7 @@ function WorldDrawer({ active, setActive, cartridge, engine, close, player }: {
     {!detail && active === 'map' && <div className="st-map">{save.map.map((node, index) => <button className={`st-entity-row${node.current ? ' is-current' : ''}`} data-connected={Boolean(node.connectedTo)} onClick={() => setDetail({ type: 'map', id: node.id })} key={node.id}><small>{String(index + 1).padStart(2, '0')}</small><span>{node.label}{node.connectedTo && <i>{node.connectedTo}</i>}</span>{node.current && <b>{t(cartridge.locale, 'here')}</b>}<Icon name="arrow" /></button>)}</div>}
     {!detail && active === 'inventory' && <div className="st-inventory">{revealingItems && !hasCurrentItemImage && <aside className="st-inventory-reveal" aria-live="polite"><Icon name="image" /><div><strong>{cartridge.copy.itemImagingTitle}</strong><p>{cartridge.copy.itemImagingBody}</p></div><i aria-hidden="true" /></aside>}{save.inventory.map((entry) => <button className={`st-entity-row${entry.rarity ? ` is-${entry.rarity}` : ''}`} onClick={() => setDetail({ type: 'inventory', id: entry.id })} key={entry.id}><div><span>{entry.label}</span>{entry.effect && <small>{entry.effect}</small>}</div><b>× {entry.count}</b><Icon name="arrow" /></button>)}</div>}
     {!detail && active === 'log' && <div className="st-log"><button className="st-entity-row" onClick={() => setDetail({ type: 'objective' })}><div><small>{t(cartridge.locale, 'currentObjective')}</small><p>{save.objective}</p></div><Icon name="arrow" /></button>{save.relationships.map((event) => <button className="st-entity-row" onClick={() => setDetail({ type: 'relationship', id: event.id })} key={event.id}><div><small>{event.actor}</small><p>{event.axis} · {t(cartridge.locale, event.delta > 0 ? 'warmer' : 'colder')}</p></div><Icon name="arrow" /></button>)}<button className="st-entity-row" onClick={() => setDetail({ type: 'system' })}><div><small>{t(cartridge.locale, 'system')}</small><p>{t(cartridge.locale, 'segmentSaved', { n: save.scene + 1 })}</p></div><Icon name="arrow" /></button></div>}
-    {detail?.type === 'player' && <div className="st-world-detail"><div className="st-world-detail__hero"><PlayerAvatar profile={player} locale={cartridge.locale} large /><div><h3>{player.name}</h3><p>{t(cartridge.locale, 'protagonist')}</p></div></div><DetailSection label={t(cartridge.locale, 'currentStatus')}><DetailMetrics rows={[{ label: t(cartridge.locale, 'here'), value: save.location }, ...cartridge.statDefinitions.map((stat) => ({ label: stat.label, value: save.stats[stat.id] ?? stat.initial }))]} /></DetailSection><DetailSection label={t(cartridge.locale, 'currentObjective')}><p>{save.objective}</p></DetailSection></div>}
+    {detail?.type === 'player' && <PlayerDetail player={player} save={save} cartridge={cartridge} focusedStatId={detail.statId} openSection={(id) => { setDetail(null); setActive(id) }} />}
     {character && <CharacterDetail character={character} relationships={save.relationships} cartridge={cartridge} />}
     {mapNode && <MapDetail node={mapNode} map={save.map} cartridge={cartridge} />}
     {item && <ItemDetail item={item} cartridge={cartridge} />}
@@ -321,6 +352,7 @@ function Game({ cartridge, mode, chatId, onSelect, onLocaleChange }: { cartridge
   const audio = useStoryAudio(cartridge, engine.save)
   const [worldOpen, setWorldOpen] = useState(false)
   const [worldTab, setWorldTab] = useState<DrawerId>('party')
+  const [worldDetail, setWorldDetail] = useState<WorldDetail | null>(null)
   const [hasUnread, setHasUnread] = useState(false)
   const [showResumeLatest, setShowResumeLatest] = useState(false)
   const [confirmResumeRestart, setConfirmResumeRestart] = useState(false)
@@ -337,6 +369,11 @@ function Game({ cartridge, mode, chatId, onSelect, onLocaleChange }: { cartridge
   const readyAudioImages = useRef<Set<string>>(new Set())
   const lastAudioError = useRef('')
   const setTextSize = (size: TextSize) => { localStorage.setItem(TEXT_SIZE_KEY, size); setTextSizeState(size) }
+  const openWorld = (active: DrawerId = worldTab, detail: WorldDetail | null = null) => {
+    setWorldTab(active)
+    setWorldDetail(detail)
+    setWorldOpen(true)
+  }
 
   useEffect(() => {
     if (!engine.loaded || hydratedLocale.current) return
@@ -459,7 +496,7 @@ function Game({ cartridge, mode, chatId, onSelect, onLocaleChange }: { cartridge
   if (!engine.loaded) return <div className="st-loading" style={setCssTheme(cartridge)}><i /><span>{t(cartridge.locale, 'restoring')}</span></div>
   if (!engine.save.entered) return <Entry cartridge={cartridge} onEnter={() => { audio.cue('open'); engine.enter() }} onSelect={onSelect} mode={engine.mode} setMode={engine.setMode} hasSave={engine.save.scene > 0} remoteAvailable={Boolean(engine.save.remoteChatId)} />
   return <main className={`st-shell st-shell--${cartridge.theme.material}`} data-text-size={textSize} style={setCssTheme(cartridge)}>
-    <ConversationHeader cartridge={cartridge} engine={engine} audio={audio} openWorld={() => setWorldOpen(true)} textSize={textSize} setTextSize={setTextSize} />
+    <ConversationHeader cartridge={cartridge} engine={engine} audio={audio} openWorld={openWorld} textSize={textSize} setTextSize={setTextSize} />
     <ConversationFeed cartridge={cartridge} engine={engine} feedRef={feedRef} endRef={endRef} onScroll={onScroll} player={player} />
     {showResumeLatest && <div className="st-resume-dialog" role="presentation"><section role="dialog" aria-modal="true" aria-labelledby="st-resume-title">
       <small>{t(cartridge.locale, confirmResumeRestart ? 'startOver' : 'resumeLatestTitle')}</small><h2 id="st-resume-title">{cartridge.copy.title}</h2><p>{t(cartridge.locale, confirmResumeRestart ? 'startOverWarning' : 'resumeLatestDescription')}</p>
@@ -469,7 +506,7 @@ function Game({ cartridge, mode, chatId, onSelect, onLocaleChange }: { cartridge
     </section></div>}
     {hasUnread && <button className="st-new-content" onClick={() => { follow.current = true; scrollToLatest(true) }}>{t(cartridge.locale, 'newContent')}<Icon name="arrow" /></button>}
     <Composer cartridge={cartridge} engine={engine} onAct={act} />
-    {worldOpen && <WorldDrawer active={worldTab} setActive={setWorldTab} cartridge={cartridge} engine={engine} close={() => setWorldOpen(false)} player={player} />}
+    {worldOpen && <WorldDrawer active={worldTab} setActive={setWorldTab} detail={worldDetail} setDetail={setWorldDetail} cartridge={cartridge} engine={engine} close={() => setWorldOpen(false)} player={player} />}
   </main>
 }
 

@@ -251,6 +251,45 @@ function validChoiceLabels(labels: string[]): string[] {
   return clean.length >= 2 && clean.length <= 5 && new Set(clean).size === clean.length ? clean : []
 }
 
+function cleanInferredItemLabel(value: string): string {
+  return value
+    .replace(/^[\s“”"「」『』]+|[\s“”"「」『』]+$/g, '')
+    .replace(/^(?:一|1)\s*(?:个|件|把|枚|份|瓶|块|张|卷|只)\s*/, '')
+    .replace(/^(?:the|an?)\s+/i, '')
+    .trim()
+}
+
+function inferInventoryCommands(parsed: ParsedScene, cartridge: StoryCartridge): Extract<ParsedCommand, { type: 'inventory' }>[] {
+  const narration = parsed.blocks.filter((block) => block.kind === 'narration').map((block) => block.text).join('\n')
+  if (!narration) return []
+  const explicit = new Set(parsed.commands.filter((command): command is Extract<ParsedCommand, { type: 'inventory' }> => command.type === 'inventory').map((command) => `${command.action}:${cleanInferredItemLabel(command.item).toLocaleLowerCase()}`))
+  const patterns = cartridge.locale === 'zh'
+    ? [
+        { action: 'add' as const, expression: /你[^。！!？?\n]{0,28}?(?:获得了|得到了|收下了|捡起了?|拾起了?|取走了?|买下了?)([^，,。；;！!？?\n]{1,36})/g },
+        { action: 'add' as const, expression: /你把([^，,。；;！!？?\n]{1,36}?)放(?:进|入)了?(?:行囊|背包)/g },
+        { action: 'remove' as const, expression: /你[^。！!？?\n]{0,28}?(?:失去了|交出了|丢弃了|用掉了|消耗了)([^，,。；;！!？?\n]{1,36})/g },
+      ]
+    : [
+        { action: 'add' as const, expression: /\byou [^.!?\n]{0,48}?\b(?:obtained|received|picked up|took|bought|kept)\s+([^.,;!?\n]{1,48})/gi },
+        { action: 'add' as const, expression: /\byou put\s+([^.,;!?\n]{1,48}?)\s+in(?:to)? (?:your )?(?:pack|bag|inventory)\b/gi },
+        { action: 'remove' as const, expression: /\byou [^.!?\n]{0,48}?\b(?:lost|gave away|discarded|consumed|used up)\s+([^.,;!?\n]{1,48})/gi },
+      ]
+  const inferred: Extract<ParsedCommand, { type: 'inventory' }>[] = []
+  const seen = new Set<string>()
+  patterns.forEach(({ action, expression }) => {
+    let match: RegExpExecArray | null
+    while ((match = expression.exec(narration))) {
+      if (/(?:可以|能够|也许|或许|打算|准备|\bcan\b|\bcould\b|\bmay\b|\bmight\b|\bplan(?:ned)? to\b)/i.test(match[0])) continue
+      const item = cleanInferredItemLabel(match[1])
+      const key = `${action}:${item.toLocaleLowerCase()}`
+      if (item.length < 2 || seen.has(key) || explicit.has(key)) continue
+      seen.add(key)
+      inferred.push({ type: 'inventory', action, item, count: 1 })
+    }
+  })
+  return inferred.slice(0, 3)
+}
+
 export function applyParsedScene(
   save: StorySave,
   parsed: ParsedScene,
@@ -271,7 +310,8 @@ export function applyParsedScene(
   }
   const effects: StoryBlock[] = []
 
-  parsed.commands.forEach((command, index) => {
+  const commands = [...parsed.commands, ...inferInventoryCommands(parsed, cartridge)]
+  commands.forEach((command, index) => {
     const effectId = `effect-${next.scene}-${index}`
     if (command.type === 'choices') {
       const labels = validChoiceLabels(command.choices)
@@ -315,21 +355,27 @@ export function applyParsedScene(
     }
     if (command.type === 'inventory') {
       const existing = next.inventory.find((item) => item.label === command.item || item.id === command.item)
+      let changed = false
       if (existing) {
+        const before = existing.count
         existing.count = Math.max(0, existing.count + (command.action === 'add' ? command.count : -command.count))
+        changed = existing.count !== before
         if (command.rarity) existing.rarity = command.rarity
         if (command.detail) existing.detail = command.detail
         if (command.effect) existing.effect = command.effect
         if (command.lore) existing.lore = command.lore
         if (command.metrics) existing.metrics = command.metrics
         if (command.imagePrompt) existing.imagePrompt = command.imagePrompt
-      } else if (command.action === 'add') next.inventory.push({
-        id: `item-${next.scene}-${index}`, label: command.item, count: command.count, rarity: command.rarity,
-        detail: command.detail, effect: command.effect, lore: command.lore, metrics: command.metrics, imagePrompt: command.imagePrompt,
-        imageStatus: 'idle',
-      })
+      } else if (command.action === 'add') {
+        next.inventory.push({
+          id: `item-${next.scene}-${index}`, label: command.item, count: command.count, rarity: command.rarity,
+          detail: command.detail, effect: command.effect, lore: command.lore, metrics: command.metrics, imagePrompt: command.imagePrompt,
+          imageStatus: 'idle',
+        })
+        changed = true
+      }
       next.inventory = next.inventory.filter((item) => item.count > 0)
-      effects.push(changeBlock(effectId, `${command.action === 'add' ? t(cartridge.locale, 'gained') : t(cartridge.locale, 'lost')} ${command.item} ×${command.count}`, command.rarity ? { rarity: command.rarity } : undefined))
+      if (changed) effects.push(changeBlock(effectId, `${command.action === 'add' ? t(cartridge.locale, 'gained') : t(cartridge.locale, 'lost')} ${command.item} ×${command.count}`, command.rarity ? { rarity: command.rarity } : undefined))
     }
     if (command.type === 'reputation') {
       const delta = /betray|hostile|distrust|拒绝|背叛/i.test(command.action) ? -1 : 1
