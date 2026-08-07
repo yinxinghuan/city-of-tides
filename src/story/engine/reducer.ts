@@ -228,7 +228,7 @@ function shortChoiceContext(value: string, maxLength: number): string {
   return clean.length > maxLength ? `${clean.slice(0, maxLength - 1).trim()}…` : clean
 }
 
-function recoveryChoices(save: StorySave, cartridge: StoryCartridge): StorySave['choices'] {
+export function createRecoveryChoices(save: Pick<StorySave, 'scene' | 'location' | 'objective' | 'partyMemberIds'>, cartridge: StoryCartridge): StorySave['choices'] {
   const location = shortChoiceContext(save.location, cartridge.locale === 'zh' ? 14 : 24)
   const objective = shortChoiceContext(save.objective, cartridge.locale === 'zh' ? 18 : 32)
   const hasParty = save.partyMemberIds.length > 0
@@ -409,7 +409,7 @@ export function applyParsedScene(
   // Ordinary scenes must remain playable even when an AI response omits or
   // truncates its machine-readable choices. A real checkpoint may still use
   // the dedicated resume action supplied by the Composer.
-  if (!next.sessionEnded && next.choices.length < 2) next.choices = recoveryChoices(next, cartridge)
+  if (!next.sessionEnded && next.choices.length < 2) next.choices = createRecoveryChoices(next, cartridge)
 
   const image = chooseSceneImage(save, next, parsed, cartridge, imagePrompt, imageSubject)
   next.blocks = [

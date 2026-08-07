@@ -5,7 +5,7 @@ import { aigramAdapter } from './adapters/aigram'
 import { mockAdapter } from './adapters/mock'
 import { remoteAdapter } from './adapters/remote'
 import { resolveCartridge } from './cartridges'
-import { applyParsedScene, createImageBlock, createInitialSave, localizeKnownState, normalizeCharacterState, updateImageBlock, updateInventoryItemImage } from './engine/reducer'
+import { applyParsedScene, createImageBlock, createInitialSave, createRecoveryChoices, localizeKnownState, normalizeCharacterState, updateImageBlock, updateInventoryItemImage } from './engine/reducer'
 import { parseStoryProtocol } from './engine/protocol'
 import { shouldUsePlayerImageReference, upgradePendingSceneImagePrompts } from './engine/imageDirector'
 import { t } from './i18n'
@@ -117,6 +117,7 @@ function normalizeSave(candidate: LegacyStorySave | null | undefined, cartridge:
     ...repaired, ...characterState, version: 5, locale: repaired.locale ?? cartridge.locale,
     remoteChatId: incomingChatId || repaired.remoteChatId, blocks, inventory, map,
   } as StorySave
+  if (!normalized.sessionEnded && normalized.choices.length < 2) normalized.choices = createRecoveryChoices(normalized, cartridge)
   return upgradePendingSceneImagePrompts(normalized, cartridge)
 }
 
