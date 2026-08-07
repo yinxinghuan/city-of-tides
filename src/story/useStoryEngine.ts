@@ -7,6 +7,7 @@ import { remoteAdapter } from './adapters/remote'
 import { resolveCartridge } from './cartridges'
 import { applyParsedScene, createImageBlock, createInitialSave, localizeKnownState, normalizeCharacterState, updateImageBlock, updateInventoryItemImage } from './engine/reducer'
 import { parseStoryProtocol } from './engine/protocol'
+import { shouldUsePlayerImageReference, upgradePendingSceneImagePrompts } from './engine/imageDirector'
 import { t } from './i18n'
 import { ITEM_IMAGE_STYLE_VERSION, type AdapterProgress, type InventoryItem, type Locale, type StoryArchive, type StoryCartridge, type StoryMode, type StorySave } from './types'
 
@@ -112,10 +113,11 @@ function normalizeSave(candidate: LegacyStorySave | null | undefined, cartridge:
     }
   })
   const characterState = normalizeCharacterState(repaired, cartridge)
-  return {
+  const normalized = {
     ...repaired, ...characterState, version: 5, locale: repaired.locale ?? cartridge.locale,
     remoteChatId: incomingChatId || repaired.remoteChatId, blocks, inventory, map,
   } as StorySave
+  return upgradePendingSceneImagePrompts(normalized, cartridge)
 }
 
 function inventoryImagePrompt(item: InventoryItem, cartridge: StoryCartridge): string {
@@ -125,7 +127,7 @@ function inventoryImagePrompt(item: InventoryItem, cartridge: StoryCartridge): s
 }
 
 export function useStoryEngine(cartridge: StoryCartridge, initialMode: StoryMode, incomingChatId?: string, imageIdentity: { ready: boolean; refUrl?: string } = { ready: true }) {
-  const cloud = useGameSave<PersistedStoryData>('city-of-tides-v2')
+  const cloud = useGameSave<PersistedStoryData>('stateful-story-template')
   const [save, setSave] = useState<StorySave>(() => createInitialSave(cartridge, incomingChatId))
   const [mode, setMode] = useState<StoryMode>(initialMode)
   const [busy, setBusy] = useState(false)
@@ -201,11 +203,12 @@ export function useStoryEngine(cartridge: StoryCartridge, initialMode: StoryMode
           try {
             const gap = Math.max(0, 3000 - (Date.now() - lastImageCallAt.current))
             if (gap) await new Promise((resolve) => window.setTimeout(resolve, gap))
-            const identityPrompt = isScene && imageIdentity.refUrl
+            const usePlayerReference = Boolean(isScene && imageIdentity.refUrl && shouldUsePlayerImageReference(prompt))
+            const identityPrompt = usePlayerReference
               ? `${prompt}. Use the person in the reference image as the player protagonist in this scene. Preserve their recognizable facial features and overall appearance, while adapting clothing, pose, lighting, and camera distance naturally to this fictional world. Keep the environment and story event visually dominant; do not turn the scene into a selfie or portrait.`
               : prompt
             lastImageCallAt.current = Date.now()
-            const url = await generate(isScene
+            const url = await generate(usePlayerReference
               ? { prompt: identityPrompt, ref_url: imageIdentity.refUrl }
               : { prompt: identityPrompt })
             if (imageAttempt.current === queuedImageKey) commit((current) => isScene

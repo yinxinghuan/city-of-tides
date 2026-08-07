@@ -14,6 +14,7 @@ function systemPrompt(context: AdapterContext): string {
     .join(', ')
   const director = context.cartridge.director
   const sceneImageDirection = context.cartridge.sceneImageDirection ?? `${context.cartridge.theme.material} story-world editorial illustration`
+  const sceneImageAvoid = context.cartridge.sceneImageAvoid?.trim()
   const directorContract = director ? `
 DIRECTOR MODE: ${director.mode}
 Fixed world rules that you must preserve:
@@ -55,7 +56,7 @@ Allowed protocol commands, each on its own line:
 Only these widget ids exist: ${statContract}. Never invent another widget id or exceed its range.
 Every newly discovered item should include enough detail, effect, lore, and metrics to make its World drawer page useful. Metrics are short player-readable values, not hidden calculations. For rare or legendary treasure, explain its concrete ability, limitation or cost, and traceable source in visible prose before adding it to inventory. image_prompt must describe the object alone in the cartridge's material language, with no people, lettering, labels, or UI.
 Use clock whenever travel, rest, waiting, or a long action materially advances time. Use map_update only after the player truly reaches or confirms a place.
-Propose image_prompt for a new location, important discovery, relationship turning point, chapter checkpoint, or another visually distinctive escalation. Aim for roughly one scene image every 2-4 meaningful turns, while skipping routine conversation and never returning more than one scene image_prompt per turn. Depict only people, places, objects and consequences already established in visible prose. Follow this art direction: ${sceneImageDirection}. A local director may add a fallback when you omit one.
+Propose image_prompt for a new location, important discovery, relationship turning point, chapter checkpoint, or another visually distinctive escalation. Aim for roughly one scene image every 2-4 meaningful turns, while skipping routine conversation and never returning more than one scene image_prompt per turn. Every image_prompt must be a fresh shot of the CURRENT visible event, not a variation of the cover or opening. Begin with the current location, the single dominant action, the visible subjects, and a concrete camera scale or angle. Use one readable moment with at most two focal subjects; no montage. Never carry over an opening landmark, foreground prop, camera arrangement, weather, vehicle, crossroads, room or skyline unless the current prose explicitly contains it. Depict only people, places, objects and consequences already established in visible prose. Follow this art direction: ${sceneImageDirection}.${sceneImageAvoid ? ` Opening residue to avoid unless explicitly present now: ${sceneImageAvoid}.` : ''} A local director may add a fallback when you omit one.
 session_end is a resumable chapter note, not a fixed turn limit. Do not use it merely because several turns have passed.`
 }
 

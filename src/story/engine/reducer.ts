@@ -1,4 +1,4 @@
-import type { CharacterDefinition, ImageBlockStatus, ParsedCommand, ParsedScene, StoryBlock, StoryCartridge, StoryCharacter, StorySave } from '../types'
+import { SCENE_IMAGE_PROMPT_VERSION, type CharacterDefinition, type ImageBlockStatus, type ParsedCommand, type ParsedScene, type StoryBlock, type StoryCartridge, type StoryCharacter, type StorySave } from '../types'
 import { t } from '../i18n'
 import { chooseSceneImage } from './imageDirector'
 
@@ -331,7 +331,7 @@ export function applyParsedScene(
     ...next.blocks,
     ...effects,
     ...(image.prompt ? [createImageBlock(`image-${next.scene}`, next.location, image.prompt, 'queued', '', {
-      source: image.source ?? 'director', reason: image.reason ?? 'cadence',
+      source: image.source ?? 'director', reason: image.reason ?? 'cadence', promptVersion: String(SCENE_IMAGE_PROMPT_VERSION),
     })] : []),
   ]
   return next

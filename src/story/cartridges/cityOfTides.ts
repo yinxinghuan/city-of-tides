@@ -34,6 +34,7 @@ function build(locale: Locale): StoryCartridge {
     },
     itemImageDirection: 'cinematic coastal fantasy artifact study, oxidized tide-copper, salt glass, dark waterproof cloth and restrained warm lamplight, tactile grounded realism',
     sceneImageDirection: 'cinematic coastal fantasy adventure, monumental half-flooded harbor architecture, deep teal water, oxidized copper, mist-white sky and warm human interiors, clear physical action and intimate emotion, consistent recurring characters',
+    sceneImageAvoid: 'the return-ferry hero view, a straight exposed stone road leading toward the whole city, the lighthouse panorama, or a compass held large in the foreground',
     imageDirector: {
       maxQuietTurns: 3, softCooldownTurns: 2,
       guaranteedTriggers: ['new-location', 'party-change', 'chapter-checkpoint'],

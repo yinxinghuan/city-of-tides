@@ -43,6 +43,7 @@ export interface StoryCharacter extends CharacterDefinition {
 export interface Choice { id: string; label: string }
 export type ImageBlockStatus = 'idle' | 'queued' | 'generating' | 'ready' | 'failed'
 export const ITEM_IMAGE_STYLE_VERSION = 2
+export const SCENE_IMAGE_PROMPT_VERSION = 3
 export interface StoryBlock { id: string; kind: 'narration' | 'dialogue' | 'check' | 'change' | 'event' | 'summary' | 'image'; text: string; speaker?: string; tone?: string; data?: Record<string, string | number> }
 export interface EntityMetric { label: string; value: string }
 export interface MapNode { id: string; label: string; connectedTo?: string; current?: boolean; visited?: boolean; detail?: string; lore?: string; facts?: string[] }
@@ -100,6 +101,7 @@ export interface StoryCartridge {
   audioTheme: StoryAudioTheme
   itemImageDirection?: string
   sceneImageDirection?: string
+  sceneImageAvoid?: string
   imageDirector?: StoryImageDirector
   director?: StoryDirector
   statDefinitions: [StatDefinition, StatDefinition, StatDefinition]
