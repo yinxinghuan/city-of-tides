@@ -1,9 +1,10 @@
-import { SCENE_IMAGE_PROMPT_VERSION, type ParsedScene, type SceneImageTrigger, type StoryCartridge, type StorySave } from '../types'
+import { SCENE_IMAGE_PROMPT_VERSION, type ParsedScene, type SceneImageSubject, type SceneImageTrigger, type StoryCartridge, type StorySave } from '../types'
 
 export interface SceneImageDecision {
   prompt?: string
   source?: 'ai' | 'director'
   reason?: 'ai-proposal' | SceneImageTrigger | 'cadence'
+  playerVisible?: boolean
 }
 
 function lastScheduledScene(save: StorySave): number {
@@ -101,12 +102,21 @@ function latestLocation(next: StorySave, parsed: ParsedScene): string {
   return update?.type === 'map_update' ? update.location : next.location
 }
 
+function playerIsVisible(parsed: ParsedScene, proposal?: string, subject?: SceneImageSubject): boolean {
+  if (subject === 'player') return true
+  if (subject === 'environment' || subject === 'others') return false
+  const shot = `${proposal ?? ''} ${visibleBeat(parsed)}`
+  if (/\b(no people|nobody|unoccupied|environment-only|object-only)\b|无人|空镜|纯环境|物品特写/i.test(shot)) return false
+  return /\b(player protagonist|protagonist|player character|returning player|the player|traveler|wayfarer|adventurer|you)\b|玩家|主角|旅人|旅行者|冒险者|你/i.test(shot)
+}
+
 function buildScenePrompt(
   cartridge: StoryCartridge,
   next: StorySave,
   parsed: ParsedScene,
   reason: SceneImageTrigger | 'cadence',
   aiProposal?: string,
+  playerVisible = false,
 ): string {
   const beat = visibleBeat(parsed) || next.objective
   const proposal = aiProposal?.replace(/\s+/g, ' ').trim().slice(0, 620)
@@ -118,6 +128,7 @@ function buildScenePrompt(
     `Latest visible story beat, which overrides older continuity hints: ${beat}.`,
     `Current location hint: ${latestLocation(next, parsed)}. Use it only when consistent with the latest visible beat; never drag an earlier location into a newer scene.`,
     `Mandatory art direction: ${direction}.`,
+    playerVisible ? 'The player protagonist is visibly present in this frame and must be the same person performing the dominant player action. Do not assign that action to a substitute character.' : '',
     'Compose one readable moment with one dominant action and at most two focal subjects. Choose a camera position, scale, lighting pattern and silhouette that differ from earlier images.',
     'Ignore all cover art and opening-scene imagery. Derive the depicted location, action, subjects, props and weather only from the primary shot brief and latest visible story beat.',
     'Show only people, objects, places and consequences established in the latest visible story. No montage, split screen, flash-forward, readable text, letters, logo, border, poster layout or UI.',
@@ -125,9 +136,9 @@ function buildScenePrompt(
 }
 
 export function shouldUsePlayerImageReference(prompt: string): boolean {
-  const characterForward = /\b(player protagonist|protagonist|player character|traveler|returning player|face visible|close-up|medium shot|gripping|speaking|fighting|running|kneeling|holding)\b/i.test(prompt)
-  const establishing = /\b(empty|environment-only|object-only|wide shot|wide view|panorama|panoramic|aerial|cityscape|landscape|establishing shot|overlook)\b/i.test(prompt)
-  return characterForward && !establishing
+  const explicitlyEmpty = /\b(no people|nobody|unoccupied|environment-only|object-only)\b|无人|空镜|纯环境|物品特写/i.test(prompt)
+  const playerVisible = /\b(player protagonist|protagonist|player character|returning player|the player|traveler|wayfarer|adventurer|you)\b|玩家|主角|旅人|旅行者|冒险者/i.test(prompt)
+  return playerVisible && !explicitlyEmpty
 }
 
 export function upgradePendingSceneImagePrompts(save: StorySave, cartridge: StoryCartridge): StorySave {
@@ -145,13 +156,15 @@ export function upgradePendingSceneImagePrompts(save: StorySave, cartridge: Stor
       raw: '',
     }
     const historical = { ...save, location: block.text || save.location }
+    const visible = playerIsVisible(parsed)
     changed = true
     return {
       ...block,
       data: {
         ...block.data,
-        prompt: buildScenePrompt(cartridge, historical, parsed, 'cadence'),
+        prompt: buildScenePrompt(cartridge, historical, parsed, 'cadence', undefined, visible),
         promptVersion: SCENE_IMAGE_PROMPT_VERSION,
+        playerVisible: visible ? 'true' : 'false',
         status: block.data?.status === 'generating' ? 'queued' : block.data?.status ?? 'queued',
       },
     }
@@ -165,29 +178,33 @@ export function chooseSceneImage(
   parsed: ParsedScene,
   cartridge: StoryCartridge,
   aiPrompt?: string,
+  imageSubject?: SceneImageSubject,
 ): SceneImageDecision {
   const proposal = aiPrompt?.trim()
   if (proposal) {
+    const visible = playerIsVisible(parsed, proposal, imageSubject)
     return {
-      prompt: buildScenePrompt(cartridge, next, parsed, 'cadence', proposal),
+      prompt: buildScenePrompt(cartridge, next, parsed, 'cadence', proposal, visible),
       source: 'ai',
       reason: 'ai-proposal',
+      playerVisible: visible,
     }
   }
 
   const director = cartridge.imageDirector
   if (!director) return {}
+  const visible = playerIsVisible(parsed, undefined, imageSubject)
   const triggers = detectTriggers(previous, parsed)
   const guaranteed = firstTrigger(triggers, director.guaranteedTriggers)
-  if (guaranteed) return { prompt: buildScenePrompt(cartridge, next, parsed, guaranteed), source: 'director', reason: guaranteed }
+  if (guaranteed) return { prompt: buildScenePrompt(cartridge, next, parsed, guaranteed, undefined, visible), source: 'director', reason: guaranteed, playerVisible: visible }
 
   const turnsSinceImage = next.scene - lastScheduledScene(previous)
   const soft = firstTrigger(triggers, director.softTriggers)
   if (soft && turnsSinceImage >= director.softCooldownTurns) {
-    return { prompt: buildScenePrompt(cartridge, next, parsed, soft), source: 'director', reason: soft }
+    return { prompt: buildScenePrompt(cartridge, next, parsed, soft, undefined, visible), source: 'director', reason: soft, playerVisible: visible }
   }
   if (turnsSinceImage >= director.maxQuietTurns) {
-    return { prompt: buildScenePrompt(cartridge, next, parsed, 'cadence'), source: 'director', reason: 'cadence' }
+    return { prompt: buildScenePrompt(cartridge, next, parsed, 'cadence', undefined, visible), source: 'director', reason: 'cadence', playerVisible: visible }
   }
   return {}
 }

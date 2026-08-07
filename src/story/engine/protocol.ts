@@ -1,5 +1,5 @@
 import { t } from '../i18n'
-import type { EntityMetric, Locale, ParsedCommand, ParsedScene, SkillDefinition, StoryBlock } from '../types'
+import type { EntityMetric, Locale, ParsedCommand, ParsedScene, SceneImageSubject, SkillDefinition, StoryBlock } from '../types'
 
 const commandNames = new Set([
   'choices', 'widget', 'skill_check', 'state', 'clock', 'map_update', 'inventory',
@@ -197,4 +197,10 @@ export function parseStoryProtocol(raw: string, locale: Locale = 'zh'): ParsedSc
 export function extractSceneImagePrompt(content: string): string | undefined {
   const match = content.match(/\[image_prompt:\s*(?:"([^"]+)"|'([^']+)'|([^\]\n]+))\s*\]/i)
   return (match?.[1] ?? match?.[2] ?? match?.[3])?.trim()
+}
+
+export function extractSceneImageSubject(content: string): SceneImageSubject | undefined {
+  const match = content.match(/\[image_subject:\s*(?:"([^"]+)"|'([^']+)'|([^\]\n]+))\s*\]/i)
+  const value = (match?.[1] ?? match?.[2] ?? match?.[3])?.trim().toLowerCase()
+  return value === 'player' || value === 'environment' || value === 'others' ? value : undefined
 }

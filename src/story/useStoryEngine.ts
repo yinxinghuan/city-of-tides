@@ -203,7 +203,10 @@ export function useStoryEngine(cartridge: StoryCartridge, initialMode: StoryMode
           try {
             const gap = Math.max(0, 3000 - (Date.now() - lastImageCallAt.current))
             if (gap) await new Promise((resolve) => window.setTimeout(resolve, gap))
-            const usePlayerReference = Boolean(isScene && imageIdentity.refUrl && shouldUsePlayerImageReference(prompt))
+            const visibility = queuedSceneImage?.data?.playerVisible
+            const usePlayerReference = Boolean(isScene && imageIdentity.refUrl && (
+              visibility === 'true' || (visibility !== 'false' && shouldUsePlayerImageReference(prompt))
+            ))
             const identityPrompt = usePlayerReference
               ? `${prompt}. Use the person in the reference image as the player protagonist in this scene. Preserve their recognizable facial features and overall appearance, while adapting clothing, pose, lighting, and camera distance naturally to this fictional world. Keep the environment and story event visually dominant; do not turn the scene into a selfie or portrait.`
               : prompt
@@ -245,7 +248,7 @@ export function useStoryEngine(cartridge: StoryCartridge, initialMode: StoryMode
       const base = localizeKnownState(saveRef.current, cartridge, activeCartridge)
       const result = await adapter.send(normalizedAction, { cartridge: activeCartridge, save: base, actionId: normalizedAction, locale: actionLocale }, setProgress)
       const parsed = parseStoryProtocol(result.content, actionLocale)
-      commit((current) => applyParsedScene(localizeKnownState(current, cartridge, activeCartridge), parsed, activeCartridge, normalizedAction, result.imagePrompt))
+      commit((current) => applyParsedScene(localizeKnownState(current, cartridge, activeCartridge), parsed, activeCartridge, normalizedAction, result.imagePrompt, result.imageSubject))
       setPendingAction('')
       setProgress(null)
     } catch (cause) {

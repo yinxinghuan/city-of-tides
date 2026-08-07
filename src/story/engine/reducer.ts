@@ -1,4 +1,4 @@
-import { SCENE_IMAGE_PROMPT_VERSION, type CharacterDefinition, type ImageBlockStatus, type ParsedCommand, type ParsedScene, type StoryBlock, type StoryCartridge, type StoryCharacter, type StorySave } from '../types'
+import { SCENE_IMAGE_PROMPT_VERSION, type CharacterDefinition, type ImageBlockStatus, type ParsedCommand, type ParsedScene, type SceneImageSubject, type StoryBlock, type StoryCartridge, type StoryCharacter, type StorySave } from '../types'
 import { t } from '../i18n'
 import { chooseSceneImage } from './imageDirector'
 
@@ -229,6 +229,7 @@ export function applyParsedScene(
   cartridge: StoryCartridge,
   actionId: string,
   imagePrompt?: string,
+  imageSubject?: SceneImageSubject,
 ): StorySave {
   const next: StorySave = {
     ...save, locale: cartridge.locale, scene: save.scene + 1,
@@ -326,12 +327,13 @@ export function applyParsedScene(
     }
   })
 
-  const image = chooseSceneImage(save, next, parsed, cartridge, imagePrompt)
+  const image = chooseSceneImage(save, next, parsed, cartridge, imagePrompt, imageSubject)
   next.blocks = [
     ...next.blocks,
     ...effects,
     ...(image.prompt ? [createImageBlock(`image-${next.scene}`, next.location, image.prompt, 'queued', '', {
       source: image.source ?? 'director', reason: image.reason ?? 'cadence', promptVersion: String(SCENE_IMAGE_PROMPT_VERSION),
+      playerVisible: image.playerVisible ? 'true' : 'false',
     })] : []),
   ]
   return next

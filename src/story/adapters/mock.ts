@@ -11,7 +11,7 @@ export const mockAdapter: StoryAdapter = {
     const turn = unused ?? context.cartridge.demoTurns[context.save.scene]
     onProgress?.({ label: t(context.locale, 'checkingState'), percent: 68 })
     await new Promise((resolve) => window.setTimeout(resolve, 440))
-    if (turn) return { content: turn.content, imagePrompt: turn.imagePrompt }
+    if (turn) return { content: turn.content, imagePrompt: turn.imagePrompt, imageSubject: turn.imageSubject }
     throw new Error(t(context.locale, 'demoComplete'))
   },
 }

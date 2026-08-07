@@ -1,6 +1,6 @@
 import type { AdapterContext, AdapterResult, StoryAdapter } from '../types'
 import { t } from '../i18n'
-import { extractSceneImagePrompt } from '../engine/protocol'
+import { extractSceneImagePrompt, extractSceneImageSubject } from '../engine/protocol'
 import { buildWorldContext, partyContinuityContract } from '../engine/worldContext'
 
 const endpoint = 'https://chat.aiwaves.tech/aigram/api/game-chat'
@@ -52,11 +52,12 @@ Allowed protocol commands, each on its own line:
 [party_change: character_id="Reuse an existing id when known" character="Name" change="add|remove" role="Role" detail="Current visible facts" lore="Durable background" vitality="0..100" stress="0..100" skills="Ability: value|Ability: value"]
 [session_end: reason="A genuine chapter checkpoint"]
 [image_prompt: "English cinematic scene description, no text, no UI, 4:3"]
+[image_subject: "player|environment|others"]
 
 Only these widget ids exist: ${statContract}. Never invent another widget id or exceed its range.
 Every newly discovered item should include enough detail, effect, lore, and metrics to make its World drawer page useful. Metrics are short player-readable values, not hidden calculations. For rare or legendary treasure, explain its concrete ability, limitation or cost, and traceable source in visible prose before adding it to inventory. image_prompt must describe the object alone in the cartridge's material language, with no people, lettering, labels, or UI.
 Use clock whenever travel, rest, waiting, or a long action materially advances time. Use map_update only after the player truly reaches or confirms a place.
-Propose image_prompt for a new location, important discovery, relationship turning point, chapter checkpoint, or another visually distinctive escalation. Aim for roughly one scene image every 2-4 meaningful turns, while skipping routine conversation and never returning more than one scene image_prompt per turn. Every image_prompt must be a fresh shot of the CURRENT visible event, not a variation of the cover or opening. Begin with the current location, the single dominant action, the visible subjects, and a concrete camera scale or angle. Use one readable moment with at most two focal subjects; no montage. Never carry over an opening landmark, foreground prop, camera arrangement, weather, vehicle, crossroads, room or skyline unless the current prose explicitly contains it. Depict only people, places, objects and consequences already established in visible prose. Follow this art direction: ${sceneImageDirection}.${sceneImageAvoid ? ` Opening residue to avoid unless explicitly present now: ${sceneImageAvoid}.` : ''} A local director may add a fallback when you omit one.
+Propose image_prompt for a new location, important discovery, relationship turning point, chapter checkpoint, or another visually distinctive escalation. Aim for roughly one scene image every 2-4 meaningful turns, while skipping routine conversation and never returning more than one scene image_prompt per turn. Whenever you emit image_prompt, immediately follow it with exactly one image_subject tag. Use player when the player protagonist is visibly present anywhere in the frame, including a wide shot; use environment only when no person is visible; use others when people are visible but the player is not. If the player is performing the dominant action described in the shot, image_subject must be player. Every image_prompt must be a fresh shot of the CURRENT visible event, not a variation of the cover or opening. Begin with the current location, the single dominant action, the visible subjects, and a concrete camera scale or angle. Use one readable moment with at most two focal subjects; no montage. Never carry over an opening landmark, foreground prop, camera arrangement, weather, vehicle, crossroads, room or skyline unless the current prose explicitly contains it. Depict only people, places, objects and consequences already established in visible prose. Follow this art direction: ${sceneImageDirection}.${sceneImageAvoid ? ` Opening residue to avoid unless explicitly present now: ${sceneImageAvoid}.` : ''} A local director may add a fallback when you omit one.
 session_end is a resumable chapter note, not a fixed turn limit. Do not use it merely because several turns have passed.`
 }
 
@@ -82,7 +83,7 @@ async function generateTurn(action: string, context: AdapterContext): Promise<Ad
     const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> }
     const content = String(payload.choices?.[0]?.message?.content ?? '').replace(/^```(?:text)?\s*|\s*```$/gi, '').trim()
     if (!content) throw new Error('empty response')
-    return { content, imagePrompt: extractSceneImagePrompt(content) }
+    return { content, imagePrompt: extractSceneImagePrompt(content), imageSubject: extractSceneImageSubject(content) }
   } finally {
     window.clearTimeout(timeout)
   }
