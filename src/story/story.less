@@ -122,6 +122,8 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline:2px s
 .st-system-line { max-width:540px; margin:8px auto 16px; display:flex; align-items:center; gap:9px; color:var(--st-muted); }
 .st-system-line::before,.st-system-line::after { content:""; height:1px; flex:1; background:color-mix(in srgb,var(--st-muted) 22%,transparent); }
 .st-system-line span { font-size:9px; text-align:center; letter-spacing:.06em; }
+.st-system-line--danger { color:var(--st-danger); font-weight:700; }
+.st-system-line--danger::before,.st-system-line--danger::after { background:color-mix(in srgb,var(--st-danger) 42%,transparent); }
 .st-result { max-width:566px; margin:0 auto 16px; }
 .st-result--check { border:1px solid color-mix(in srgb,var(--st-ink) 22%,transparent); margin-left:max(42px,calc((100% - 524px)/2)); padding:12px; }
 .st-result--check>div { display:flex; align-items:center; gap:9px; }

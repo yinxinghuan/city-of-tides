@@ -8,14 +8,16 @@ import { resolveCartridge } from './cartridges'
 import { applyParsedScene, createImageBlock, createInitialSave, createRecoveryChoices, localizeKnownState, normalizeCharacterState, updateImageBlock, updateInventoryItemImage } from './engine/reducer'
 import { parseStoryProtocol } from './engine/protocol'
 import { shouldUsePlayerImageReference, upgradePendingSceneImagePrompts } from './engine/imageDirector'
+import { buildDangerDirective, normalizeDangerState } from './engine/dangerDirector'
 import { t } from './i18n'
 import { ITEM_IMAGE_STYLE_VERSION, type AdapterProgress, type InventoryItem, type Locale, type StoryArchive, type StoryCartridge, type StoryMode, type StorySave } from './types'
 
-type LegacyStorySave = Omit<StorySave, 'version' | 'locale' | 'characters' | 'partyMemberIds'> & {
-  version?: 1 | 2 | 3 | 4 | 5
+type LegacyStorySave = Omit<StorySave, 'version' | 'locale' | 'characters' | 'partyMemberIds' | 'danger'> & {
+  version?: 1 | 2 | 3 | 4 | 5 | 6
   locale?: Locale
   characters?: StorySave['characters']
   partyMemberIds?: StorySave['partyMemberIds']
+  danger?: Partial<StorySave['danger']>
   imageUrl?: string
   imageStatus?: 'idle' | 'queued' | 'generating' | 'ready' | 'failed'
   imagePrompt?: string
@@ -31,6 +33,15 @@ function readLegacyLocal(cartridgeId: string): LegacyStorySave | null {
   try {
     const raw = localStorage.getItem(`stateful-story-${cartridgeId}-save`)
     return raw ? JSON.parse(raw) as LegacyStorySave : null
+  } catch { return null }
+}
+
+function readSharedTemplateLocal(cartridgeId: string): LegacyStorySave | null {
+  try {
+    const raw = localStorage.getItem('stateful-story-template-save')
+    if (!raw) return null
+    const stored = JSON.parse(raw) as PersistedStoryData
+    return isArchive(stored) ? (stored.worlds[cartridgeId] as LegacyStorySave | undefined) ?? null : stored.cartridgeId === cartridgeId ? stored : null
   } catch { return null }
 }
 
@@ -114,8 +125,9 @@ function normalizeSave(candidate: LegacyStorySave | null | undefined, cartridge:
   })
   const characterState = normalizeCharacterState(repaired, cartridge)
   const normalized = {
-    ...repaired, ...characterState, version: 5, locale: repaired.locale ?? cartridge.locale,
+    ...repaired, ...characterState, version: 6, locale: repaired.locale ?? cartridge.locale,
     remoteChatId: incomingChatId || repaired.remoteChatId, blocks, inventory, map,
+    danger: normalizeDangerState(repaired.danger),
   } as StorySave
   if (!normalized.sessionEnded && normalized.choices.length < 2) normalized.choices = createRecoveryChoices(normalized, cartridge)
   return upgradePendingSceneImagePrompts(normalized, cartridge)
@@ -128,7 +140,7 @@ function inventoryImagePrompt(item: InventoryItem, cartridge: StoryCartridge): s
 }
 
 export function useStoryEngine(cartridge: StoryCartridge, initialMode: StoryMode, incomingChatId?: string, imageIdentity: { ready: boolean; refUrl?: string } = { ready: true }) {
-  const cloud = useGameSave<PersistedStoryData>('stateful-story-template')
+  const cloud = useGameSave<PersistedStoryData>('city-of-tides-v2')
   const [save, setSave] = useState<StorySave>(() => createInitialSave(cartridge, incomingChatId))
   const [mode, setMode] = useState<StoryMode>(initialMode)
   const [busy, setBusy] = useState(false)
@@ -153,7 +165,7 @@ export function useStoryEngine(cartridge: StoryCartridge, initialMode: StoryMode
     const archive: StoryArchive = isArchive(stored)
       ? { ...stored, worlds: { ...stored.worlds } }
       : { version: 1, worlds: stored?.cartridgeId ? { [stored.cartridgeId]: stored as StorySave } : {} }
-    const legacyLocal = archive.worlds[cartridge.id] ? null : readLegacyLocal(cartridge.id)
+    const legacyLocal = archive.worlds[cartridge.id] ? null : readLegacyLocal(cartridge.id) ?? readSharedTemplateLocal(cartridge.id)
     const next = normalizeSave(archive.worlds[cartridge.id] as LegacyStorySave | undefined || legacyLocal, cartridge, incomingChatId)
     const nextArchive: StoryArchive = { ...archive, version: 1, worlds: { ...archive.worlds, [cartridge.id]: next } }
     archiveRef.current = nextArchive
@@ -247,9 +259,10 @@ export function useStoryEngine(cartridge: StoryCartridge, initialMode: StoryMode
     try {
       const adapter = mode === 'remote' ? remoteAdapter : mode === 'aigram' ? aigramAdapter : mockAdapter
       const base = localizeKnownState(saveRef.current, cartridge, activeCartridge)
-      const result = await adapter.send(normalizedAction, { cartridge: activeCartridge, save: base, actionId: normalizedAction, locale: actionLocale }, setProgress)
+      const dangerDirective = buildDangerDirective(base, activeCartridge, normalizedAction)
+      const result = await adapter.send(normalizedAction, { cartridge: activeCartridge, save: base, actionId: normalizedAction, locale: actionLocale, dangerDirective }, setProgress)
       const parsed = parseStoryProtocol(result.content, actionLocale)
-      commit((current) => applyParsedScene(localizeKnownState(current, cartridge, activeCartridge), parsed, activeCartridge, normalizedAction, result.imagePrompt, result.imageSubject))
+      commit((current) => applyParsedScene(localizeKnownState(current, cartridge, activeCartridge), parsed, activeCartridge, normalizedAction, result.imagePrompt, result.imageSubject, dangerDirective))
       setPendingAction('')
       setProgress(null)
     } catch (cause) {

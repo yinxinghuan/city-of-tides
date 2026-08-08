@@ -5,6 +5,7 @@
 - 前端：React 18、TypeScript 5、Less、Vite 5，构建基址为 `base: './'`。
 - 叙事内核：模板化 `StoryCartridge`、文本协议解析器、纯函数 reducer、Aigram / demo / remote 三种 adapter。
 - 玩家身份与存档：平台资料接口读取 `name/head_url`；`useGameSave` 以 `city-of-tides-v2` 为个人存档命名空间，localStorage 为平台外回退。
+- 兼容迁移：新命名空间为空时读取旧 `stateful-story-template-save` 中的本作世界并写入 `city-of-tides-v2-save`；平台内云存档仍由永久 UUID 隔离。
 - 运行时内容：Aigram 连续故事接口负责扩写剧情；平台 `gen-image` 负责场景与物品图；Web Audio API 合成环境声与反馈音。
 - 异步多人层：原 Cloudflare Worker、Durable Object 与 SQLite 后端继续保留，正式 session ID 为 `1a2916b0-8751-4e5d-9f9b-92daf5f7c96f`。当前 v2 序章不把公共面板放进主流程，后续在地区事件中按需读取痕迹、援助、季节工程与永久锚点。
 
@@ -20,6 +21,7 @@ src/story/
   adapters/remote.ts            # 已绑定 chat_id 的连续世界适配器
   engine/protocol.ts            # AI 文本协议解析
   engine/reducer.ts             # 数值、角色、同行者、地图、物品和剧情块状态更新
+  engine/dangerDirector.ts      # 3–5 安全行动节奏、潮城威胁、稳定 d20 与失败代价
   engine/imageDirector.ts       # “AI 提议 + 本地导演规则兜底”的出图决策
   engine/worldContext.ts        # 完整存档上下文与同行者连续性合同
   useStoryEngine.ts             # 存档恢复、行动提交、生图队列、重试和重新开始
@@ -49,6 +51,7 @@ doc/
 - `cityOfTides.ts` 是内容真源。中文和英文由同一个 `build(locale)` 生成，角色、地点、物品和选择 ID 不随语言变化。
 - 初始值固定为体力 72、潮息 40、城市联结 10。`applyParsedScene()` 只接受协议允许的数值变化，并保留地图、同行者、关系和物品历史。
 - `worldContext.ts` 在每次 AI 行动前传入当前目标、位置、时间、数值、所有已知人物、同行者、地图、物品、关系和最近剧情，避免模型把新人物当作新开局。尼洛加入后，除非正文明确写出离队原因，否则不能从同行者状态中消失。
+- `StorySave.version = 6` 保存 `danger` 遭遇阶段、周期、冷却、严重度和上一结果。`dangerDirector` 在 3–5 个安全行动后安排潮兆→对峙→解决；只让体力与潮息触发物理危险，城市联结仍只影响人物帮助和结局。解决骰点本地稳定生成；缺少合法后果时，潮息按有代价成功 -4、失败 -8、关键失败 -16 兜底。
 - 序章 demo 是确定性验收路径，不是正式内容上限。正式模式允许玩家直接输入最多 240 字的自由行动，Aigram 从同一状态继续生成。
 
 ### 信息顺序与操作
@@ -77,6 +80,7 @@ doc/
 
 - 改主线章节：编辑 `src/story/cartridges/cityOfTides.ts` 与 `doc/story.md`；新增地点时同时补 `initialMap`、世界合同和序章/章节测试。
 - 加地区委托或宝物：在 cartridge 增加人物、物品、地点定义，并让 AI 协议返回稳定 ID；数值上下限继续由 reducer 校验。
+- 改危险频率、潮城威胁池、战斗占比、五级 DC 或潮息代价：修改 `cityOfTides.ts` 的 `dangerDirector`；共享世界 Worker 不参与个人遭遇判定。
 - 调出图节奏：修改 `engine/imageDirector.ts` 的关键事件和无图间隔规则；只换美术风格时改 cartridge 的 `sceneImageDirection` / `itemImageDirection`。
 - 换题材复用模板：新增独立 cartridge，保留 StoryShell、协议、reducer、存档与 QA 合同；正式游戏仓库只注册自己的 cartridge。
 - 接入多人痕迹：在地区响应中通过 `src/shared-world/gateway.ts` 查询当前区域读模型，把结果转换为叙事块；不要把公共面板重新放回主导航首页。

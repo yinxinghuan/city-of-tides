@@ -72,6 +72,61 @@ export interface StoryDirector {
   maxActiveThreads: number
 }
 
+export type DangerPhase = 'calm' | 'warning' | 'confrontation'
+export type DangerOutcome = 'none' | 'critical-success' | 'success' | 'costly-success' | 'failure' | 'critical-failure'
+
+export interface DangerCost {
+  statId: string
+  operation: 'add' | 'remove'
+  amount: number
+}
+
+export interface StoryDangerDirector {
+  minSafeTurns: number
+  maxSafeTurns: number
+  cooldownTurns: number
+  escalationStats: string[]
+  threatPalette: string[]
+  methods: [string, string, string]
+  physicalCombat: 'none' | 'rare' | 'occasional'
+  resolution: {
+    skill: string
+    modifier: number
+    dcBySeverity: [number, number, number, number, number]
+    criticalDcBonus?: number
+    fallbackCosts: [DangerCost, ...DangerCost[]]
+  }
+}
+
+export interface StoryDangerState {
+  phase: DangerPhase
+  safeTurns: number
+  cycle: number
+  cooldownTurns: number
+  severity: number
+  currentThreat?: string
+  lastOutcome: DangerOutcome
+  lastResolvedScene?: number
+}
+
+export interface DangerCheck {
+  skill: string
+  dc: number
+  roll: number
+  modifier: number
+  total: number
+  outcome: Exclude<DangerOutcome, 'none'>
+}
+
+export interface DangerDirective {
+  phase: 'warning' | 'confrontation' | 'resolution'
+  severity: number
+  threat: string
+  methods: [string, string, string]
+  physicalCombat: StoryDangerDirector['physicalCombat']
+  check?: DangerCheck
+}
+
 export type SceneImageTrigger =
   | 'new-location'
   | 'rare-item'
@@ -105,6 +160,7 @@ export interface StoryCartridge {
   sceneImageAvoid?: string
   imageDirector?: StoryImageDirector
   director?: StoryDirector
+  dangerDirector?: StoryDangerDirector
   statDefinitions: [StatDefinition, StatDefinition, StatDefinition]
   drawerLabels: Record<DrawerId, string>
   opening: { location: string; time: string; objective: string; imagePrompt: string; blocks: StoryBlock[]; choices: Choice[] }
@@ -118,7 +174,7 @@ export interface StoryCartridge {
 export interface DemoTurn { match: string[]; content: string; imagePrompt?: string; imageSubject?: SceneImageSubject }
 
 export interface StorySave {
-  version: 5
+  version: 6
   cartridgeId: CartridgeId
   locale: Locale
   remoteChatId?: string
@@ -135,6 +191,7 @@ export interface StorySave {
   characters: StoryCharacter[]
   partyMemberIds: string[]
   relationships: RelationshipEvent[]
+  danger: StoryDangerState
   sessionEnded: boolean
   lastActionId?: string
   _lastActive?: number
@@ -157,6 +214,7 @@ export type ParsedCommand =
   | { type: 'reputation'; npc: string; action: string }
   | { type: 'character_update'; characterId?: string; character: string; role?: string; detail?: string; lore?: string; vitality?: number; stress?: number; skills?: SkillDefinition[] }
   | { type: 'party_change'; characterId?: string; character: string; change: 'add' | 'remove'; role?: string; detail?: string; lore?: string; vitality?: number; stress?: number; skills?: SkillDefinition[] }
+  | { type: 'encounter'; phase: 'warning' | 'confrontation' | 'resolution'; kind?: string; severity?: number; outcome?: DangerOutcome }
   | { type: 'session_end'; reason: string }
 
 export interface ParsedScene { blocks: StoryBlock[]; commands: ParsedCommand[]; raw: string }
@@ -166,6 +224,7 @@ export interface AdapterContext {
   save: StorySave
   actionId: string
   locale: Locale
+  dangerDirective?: DangerDirective
 }
 
 export interface AdapterProgress {

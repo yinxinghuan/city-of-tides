@@ -2,6 +2,7 @@ import type { AdapterResult, StoryAdapter } from '../types'
 import { t } from '../i18n'
 import { extractSceneImagePrompt, extractSceneImageSubject } from '../engine/protocol'
 import { buildWorldContext, partyContinuityContract } from '../engine/worldContext'
+import { dangerDirectiveContract } from '../engine/dangerDirector'
 
 const endpoint = import.meta.env.VITE_STORY_API_ORIGIN || 'https://uu545921-zfkm-aec62664.westb.seetacloud.com:8443'
 
@@ -24,11 +25,12 @@ export const remoteAdapter: StoryAdapter = {
     const languageInstruction = context.locale === 'en'
       ? `\n\n[LANGUAGE AND FORMAT: Reply in English. Keep every protocol command tag and its syntax intact. End every response, including a genuine chapter checkpoint, with exactly three actions in this exact machine-readable form: [choices: "Action one"|"Action two"|"Action three"]. Button actions must match the decisions described in the prose. Inventory is transactional: whenever prose says the player obtains, stores, gives away, loses, discards, or consumes an item, emit the matching [inventory: action="add|remove" ...] command in the same response; merely seeing an item is not ownership. For a visually distinctive new place, discovery, relationship turn, major result, or checkpoint, propose one English scene prompt using [image_prompt: "cinematic visible scene, no text, no UI, 4:3"], immediately followed by [image_subject: "player|environment|others"]. Use player whenever the player protagonist is visible anywhere in the frame, including a wide shot, and always when they perform the dominant action; environment means no person, others means people without the player. Depict only visible established facts and follow this art direction: ${sceneImageDirection}. ${imageFreshness} Skip routine conversation.]`
       : `\n\n[语言与格式要求：请用简体中文回复，并保持所有协议命令标签及语法不变。每次回复（包括真正的章节节点）都必须在结尾用这一机器可读格式给出恰好三个行动：[choices: "行动一"|"行动二"|"行动三"]。按钮行动必须与正文描述的决定一致。物品状态必须与叙事同步：正文只要明确说玩家获得、收下、装入、交出、失去、丢弃或消耗了物品，同一回复就必须输出对应的 [inventory: action="add|remove" ...]；只看见或检查物品不等于归玩家所有。遇到具有明显视觉价值的新地点、发现、关系转折、重大结果或阶段节点时，用 [image_prompt: "English cinematic visible scene, no text, no UI, 4:3"] 提议一张场景图，并紧接着输出 [image_subject: "player|environment|others"]。画面任何位置出现玩家主角（包括远景）都必须用 player；玩家执行画面主动作时也必须用 player；environment 表示无人空镜，others 表示有人但玩家不在。只画正文已经公开的事实，并遵循这一画风：${sceneImageDirection}。${imageFreshness} 普通对话不要提议。]`
+    const dangerContract = dangerDirectiveContract(context.dangerDirective)
     const response = await fetch(`${endpoint}/api/generate`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chatId,
-        userMessage: `AUTHORITATIVE_WORLD_STATE_JSON:\n${JSON.stringify(buildWorldContext(context))}\n\n${partyContinuityContract}\n\nPLAYER_ACTION:\n${action}${languageInstruction}`,
+        userMessage: `AUTHORITATIVE_WORLD_STATE_JSON:\n${JSON.stringify(buildWorldContext(context))}\n\n${partyContinuityContract}\n${dangerContract}\n\nPLAYER_ACTION:\n${action}${languageInstruction}`,
         streaming: false,
       }),
     })

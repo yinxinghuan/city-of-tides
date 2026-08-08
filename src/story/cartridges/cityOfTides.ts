@@ -1,4 +1,4 @@
-import type { Locale, StoryCartridge, StoryImageDirector } from '../types'
+import type { Locale, StoryCartridge, StoryDangerDirector, StoryImageDirector } from '../types'
 
 const coverImage = new URL('../img/worlds/city-of-tides.webp', import.meta.url).href
 const entryImage = new URL('../img/worlds/city-of-tides-entry.webp', import.meta.url).href
@@ -83,6 +83,19 @@ function build(locale: Locale): StoryCartridge {
       choiceIntents: zh ? ['观察、追踪回声或与人交涉', '移动并利用环境或物品', '承担风险、帮助别人或采取自定方法'] : ['observe, trace an echo or talk', 'move and use the environment or items', 'take a risk, help someone or choose another method'],
       maxActiveThreads: 3,
     },
+    dangerDirector: {
+      minSafeTurns: 3, maxSafeTurns: 5, cooldownTurns: 1,
+      escalationStats: ['vitality', 'tide-breath'],
+      threatPalette: zh
+        ? ['潮兽正从退水后的暗处靠近', '涨水正在封闭当前路线', '浸水旧建筑开始坍塌', '潮钟守卫锁定了这片区域', '错位的时间回声正在误导道路', '一名竞争者正沿玩家留下的痕迹追来']
+        : ['a tide beast is approaching from the newly exposed dark', 'rising water is sealing the current route', 'a flooded old structure is beginning to collapse', 'tidewatch guards have locked onto the area', 'a displaced time echo is misleading the route', 'a rival is following the player trace'],
+      methods: zh ? ['观察潮相、交涉或准备', '潜行、航行或改变路线', '使用环境、物品或正面应对'] : ['read the tide, negotiate, or prepare', 'sneak, sail, or change route', 'use the environment, an item, or confront it'],
+      physicalCombat: 'rare',
+      resolution: {
+        skill: s('潮城应变', 'Tidecraft'), modifier: 2, dcBySeverity: [9, 11, 13, 15, 17],
+        fallbackCosts: [{ statId: 'tide-breath', operation: 'remove', amount: 8 }],
+      },
+    } satisfies StoryDangerDirector,
     statDefinitions: [
       { id: 'vitality', label: s('体力', 'Vitality'), min: 0, max: 100, initial: 72, inverse: true, display: 'bar', warningAt: 25, dangerAt: 0, maxDelta: 24 },
       { id: 'tide-breath', label: s('潮息', 'Tide Breath'), min: 0, max: 100, initial: 40, inverse: true, display: 'bar', warningAt: 20, dangerAt: 0, maxDelta: 25 },

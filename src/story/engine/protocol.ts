@@ -3,7 +3,7 @@ import type { EntityMetric, Locale, ParsedCommand, ParsedScene, SceneImageSubjec
 
 const commandNames = new Set([
   'choices', 'widget', 'skill_check', 'state', 'clock', 'map_update', 'inventory',
-  'reputation', 'character_update', 'party_change', 'session_end',
+  'reputation', 'character_update', 'party_change', 'encounter', 'session_end',
 ])
 
 function uid(prefix: string, index: number, text: string): string {
@@ -131,6 +131,12 @@ function parseCommand(name: string, source: string, locale: Locale): ParsedComma
       type: 'party_change', characterId: data.character_id, character: data.character, change: data.change === 'remove' ? 'remove' : 'add',
       role: data.role, detail: data.detail, lore: data.lore, vitality: optionalNumber(data.vitality), stress: optionalNumber(data.stress), skills: parseSkills(data.skills),
     } : null
+    case 'encounter': {
+      const phase = data.phase === 'warning' || data.phase === 'confrontation' ? data.phase : data.phase === 'resolution' ? 'resolution' : null
+      const outcomes = ['none', 'critical-success', 'success', 'costly-success', 'failure', 'critical-failure'] as const
+      const outcome = outcomes.find((value) => value === data.outcome)
+      return phase ? { type: 'encounter', phase, kind: data.kind, severity: optionalNumber(data.severity), outcome } : null
+    }
     case 'session_end': return { type: 'session_end', reason: data.reason ?? t(locale, 'chapterPaused') }
     default: return null
   }

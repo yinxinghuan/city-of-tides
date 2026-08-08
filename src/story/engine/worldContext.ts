@@ -43,6 +43,7 @@ export function buildWorldContext(context: AdapterContext) {
       premise: cartridge.copy.promise,
       language: context.locale === 'zh' ? 'Simplified Chinese' : 'English',
       director: cartridge.director,
+      dangerDirector: cartridge.dangerDirector,
     },
     current: {
       scene: save.scene,
@@ -61,6 +62,8 @@ export function buildWorldContext(context: AdapterContext) {
       map: save.map,
       inventory: save.inventory,
       relationships: save.relationships.slice(-30),
+      danger: save.danger,
+      dangerDirective: context.dangerDirective,
       recentStory: visibleHistory(save.blocks),
     },
   }

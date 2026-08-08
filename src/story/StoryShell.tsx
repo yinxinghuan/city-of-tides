@@ -60,6 +60,12 @@ function statPresentation(stat: StatDefinition, value: number) {
   }
 }
 
+function checkPassed(block: StoryBlock): boolean {
+  const outcome = String(block.data?.outcome ?? '')
+  if (outcome) return outcome === 'critical-success' || outcome === 'success' || outcome === 'costly-success'
+  return Number(block.data?.total) >= Number(block.data?.dc)
+}
+
 function PlayerAvatar({ profile, locale, large = false }: { profile: PlayerProfile; locale: Locale; large?: boolean }) {
   const fallback = new URL('./alteru-default-avatar.jpg', document.baseURI).href
   return <span className={`st-player-avatar${large ? ' st-player-avatar--large' : ''}`} title={profile.name}>
@@ -145,11 +151,11 @@ function InlineSceneImage({ block, cartridge, retry }: { block: StoryBlock; cart
 function StoryBlockView({ block, cartridge, retryImage, player }: { block: StoryBlock; cartridge: StoryCartridge; retryImage: (id: string) => void; player: PlayerProfile }) {
   if (block.kind === 'image') return <InlineSceneImage block={block} cartridge={cartridge} retry={retryImage} />
   if (block.kind === 'dialogue') return <div className="st-message st-message--character" data-block-id={block.id}><div className="st-message__avatar">{block.speaker?.slice(0, 1)}</div><div className="st-message__body"><header><span>{block.speaker}</span><small>{block.tone}</small></header><p>{block.text}</p></div></div>
-  if (block.kind === 'check') return <div className="st-result st-result--check" data-block-id={block.id}><div><span>{Number(block.data?.total) >= Number(block.data?.dc) ? 'PASS' : 'MISS'}</span><p>{block.text}</p></div><section><b>{block.data?.roll}</b><i>+</i><b>{block.data?.modifier}</b><i>=</i><strong>{block.data?.total}</strong><small>DC {block.data?.dc}</small></section></div>
+  if (block.kind === 'check') return <div className="st-result st-result--check" data-block-id={block.id}><div><span>{checkPassed(block) ? 'PASS' : 'MISS'}</span><p>{block.text}</p></div><section><b>{block.data?.roll}</b><i>+</i><b>{block.data?.modifier}</b><i>=</i><strong>{block.data?.total}</strong><small>DC {block.data?.dc}</small></section></div>
   if (block.kind === 'change') return <div className="st-result st-result--change" data-block-id={block.id}><i /><span>{block.text}</span></div>
   if (block.kind === 'summary') return <section className="st-result st-result--summary" data-block-id={block.id}><small>{t(cartridge.locale, 'summary')}</small><h2>{block.text}</h2><p>{t(cartridge.locale, 'notEnding')}</p></section>
   if (block.kind === 'event' && block.id.startsWith('action-')) return <div className="st-message st-message--player" data-block-id={block.id}><div className="st-message__body"><small>{t(cartridge.locale, 'yourAction')}</small><p>{block.text}</p></div><PlayerAvatar profile={player} locale={cartridge.locale} /></div>
-  if (block.kind === 'event') return <div className="st-system-line" data-block-id={block.id}><span>{block.text}</span></div>
+  if (block.kind === 'event') return <div className={`st-system-line${block.data?.dangerPhase ? ' st-system-line--danger' : ''}`} data-block-id={block.id} data-danger-phase={block.data?.dangerPhase}><span>{block.text}</span></div>
   return <div className="st-narration" data-block-id={block.id}><p>{block.text}</p></div>
 }
 
@@ -443,7 +449,7 @@ function Game({ cartridge, mode, chatId, onSelect, onLocaleChange }: { cartridge
       const change = added.some((block) => block.kind === 'change')
       if (summary) audio.cue('summary')
       else if (treasure) audio.cue('treasure')
-      else if (check) audio.cue(Number(check.data?.total) >= Number(check.data?.dc) ? 'success' : 'failure')
+      else if (check) audio.cue(checkPassed(check) ? 'success' : 'failure')
       else if (discovery) audio.cue('discovery')
       else if (change) audio.cue('change')
       else audio.cue('change')

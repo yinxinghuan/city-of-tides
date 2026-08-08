@@ -2,6 +2,7 @@ import type { AdapterContext, AdapterResult, StoryAdapter } from '../types'
 import { t } from '../i18n'
 import { extractSceneImagePrompt, extractSceneImageSubject } from '../engine/protocol'
 import { buildWorldContext, partyContinuityContract } from '../engine/worldContext'
+import { dangerDirectiveContract } from '../engine/dangerDirector'
 
 const endpoint = 'https://chat.aiwaves.tech/aigram/api/game-chat'
 
@@ -24,6 +25,7 @@ ${director.generationRules.map((rule) => `- ${rule}`).join('\n')}
 The three suggested choices should cover these distinct intents when the situation allows: ${director.choiceIntents.join(' / ')}.
 Keep at most ${director.maxActiveThreads} unresolved threads prominent; older threads remain in history but should not all compete for attention.
 The player may attempt any plausible in-world action, even if it was not one of your choices. Judge it from the world state instead of refusing or forcing the previous route.` : ''
+  const dangerContract = dangerDirectiveContract(context.dangerDirective)
 
   return `You are the stateful game master for an ongoing AlterU story. The JSON state in each user message is authoritative. Continue from it; never restart the premise, repeat the previous response, or claim progress without causing a new concrete situation.
 
@@ -38,11 +40,12 @@ Use dialogue lines only in this form:
 ${directorContract}
 
 ${partyContinuityContract}
+${dangerContract}
 
 Allowed protocol commands, each on its own line:
 [choices: "Choice one"|"Choice two"|"Choice three"]
 [widget: id, value: NUMBER]
-[skill_check: skill="Name" dc="NUMBER" rolls="NUMBER" modifier="NUMBER" total="NUMBER" result="success|failure"]
+[skill_check: skill="Name" dc="NUMBER" rolls="NUMBER" modifier="NUMBER" total="NUMBER" result="critical-success|success|costly-success|failure|critical-failure"]
 [state: value="New objective"]
 [clock: value="New visible day and time"]
 [map_update: new_location="Place" connected_to="Previous place" detail="Current visible condition" lore="Why this place matters in the world" facts="Known fact one|Known fact two"]
@@ -50,6 +53,7 @@ Allowed protocol commands, each on its own line:
 [reputation: npc="Name" action="trusted|distrusted|helped|betrayed"]
 [character_update: character_id="Reuse an existing id when known" character="Name" role="Role" detail="Current visible facts" lore="Durable background" vitality="0..100" stress="0..100" skills="Ability: value|Ability: value"]
 [party_change: character_id="Reuse an existing id when known" character="Name" change="add|remove" role="Role" detail="Current visible facts" lore="Durable background" vitality="0..100" stress="0..100" skills="Ability: value|Ability: value"]
+[encounter: phase="warning|confrontation|resolution" kind="Current concrete threat" severity="1..5" outcome="active|critical-success|success|costly-success|failure|critical-failure"]
 [session_end: reason="A genuine chapter checkpoint"]
 [image_prompt: "English cinematic scene description, no text, no UI, 4:3"]
 [image_subject: "player|environment|others"]

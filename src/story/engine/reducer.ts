@@ -1,6 +1,7 @@
-import { SCENE_IMAGE_PROMPT_VERSION, type CharacterDefinition, type ImageBlockStatus, type ParsedCommand, type ParsedScene, type SceneImageSubject, type StoryBlock, type StoryCartridge, type StoryCharacter, type StorySave } from '../types'
+import { SCENE_IMAGE_PROMPT_VERSION, type CharacterDefinition, type DangerDirective, type ImageBlockStatus, type ParsedCommand, type ParsedScene, type SceneImageSubject, type StoryBlock, type StoryCartridge, type StoryCharacter, type StorySave } from '../types'
 import { t } from '../i18n'
 import { chooseSceneImage } from './imageDirector'
+import { createInitialDangerState, normalizeDangerState, settleDangerTurn } from './dangerDirector'
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
@@ -9,7 +10,7 @@ function clamp(value: number, min: number, max: number): number {
 export function createInitialSave(cartridge: StoryCartridge, remoteChatId?: string): StorySave {
   const initialPartyMemberIds = cartridge.initialPartyMemberIds ?? cartridge.characters.filter((character) => character.initialStatus === 'companion').map((character) => character.id)
   return {
-    version: 5, cartridgeId: cartridge.id, locale: cartridge.locale, remoteChatId, entered: false, scene: 0,
+    version: 6, cartridgeId: cartridge.id, locale: cartridge.locale, remoteChatId, entered: false, scene: 0,
     location: cartridge.opening.location, time: cartridge.opening.time, objective: cartridge.opening.objective,
     stats: Object.fromEntries(cartridge.statDefinitions.map((stat) => [stat.id, stat.initial])),
     blocks: [...cartridge.opening.blocks, createImageBlock('image-0', cartridge.opening.location, cartridge.opening.imagePrompt, 'idle')],
@@ -22,6 +23,7 @@ export function createInitialSave(cartridge: StoryCartridge, remoteChatId?: stri
     }),
     partyMemberIds: initialPartyMemberIds,
     relationships: [],
+    danger: createInitialDangerState(),
     sessionEnded: false,
   }
 }
@@ -297,6 +299,7 @@ export function applyParsedScene(
   actionId: string,
   imagePrompt?: string,
   imageSubject?: SceneImageSubject,
+  dangerDirective?: DangerDirective,
 ): StorySave {
   const next: StorySave = {
     ...save, locale: cartridge.locale, scene: save.scene + 1,
@@ -306,9 +309,11 @@ export function applyParsedScene(
     characters: save.characters.map((character) => ({ ...character, skills: character.skills.map((skill) => ({ ...skill })) })),
     partyMemberIds: [...save.partyMemberIds],
     stats: { ...save.stats },
+    danger: normalizeDangerState(save.danger),
     sessionEnded: false, lastActionId: actionId,
   }
   const effects: StoryBlock[] = []
+  let dangerCheckAdded = false
 
   const commands = [...parsed.commands, ...inferInventoryCommands(parsed, cartridge)]
   commands.forEach((command, index) => {
@@ -332,7 +337,11 @@ export function applyParsedScene(
       effects.push(changeBlock(effectId, `${definition.label} ${delta > 0 ? '+' : ''}${delta}`, { stat: command.id, delta }))
     }
     if (command.type === 'skill_check') {
-      effects.push({ id: effectId, kind: 'check', text: `${command.skill} · ${command.result === 'success' ? t(cartridge.locale, 'checkSuccess') : t(cartridge.locale, 'checkFailure')}`, data: { dc: command.dc, roll: command.roll, modifier: command.modifier, total: command.total } })
+      const fixed = dangerDirective?.phase === 'resolution' && dangerDirective.check ? dangerDirective.check : undefined
+      const check = fixed ?? command
+      const succeeded = fixed ? fixed.outcome === 'critical-success' || fixed.outcome === 'success' || fixed.outcome === 'costly-success' : command.result === 'success'
+      effects.push({ id: effectId, kind: 'check', text: `${check.skill} · ${succeeded ? t(cartridge.locale, 'checkSuccess') : t(cartridge.locale, 'checkFailure')}`, data: { dc: check.dc, roll: check.roll, modifier: check.modifier, total: check.total, outcome: fixed?.outcome ?? command.result } })
+      dangerCheckAdded = Boolean(fixed)
     }
     if (command.type === 'state' && command.value) next.objective = command.value
     if (command.type === 'clock' && command.value) next.time = command.value
@@ -405,6 +414,16 @@ export function applyParsedScene(
       effects.push({ id: effectId, kind: 'summary', text: command.reason })
     }
   })
+
+  if (dangerDirective?.phase === 'resolution' && dangerDirective.check && !dangerCheckAdded) {
+    const check = dangerDirective.check
+    const succeeded = check.outcome === 'critical-success' || check.outcome === 'success' || check.outcome === 'costly-success'
+    effects.push({
+      id: `danger-check-${next.scene}`, kind: 'check', text: `${check.skill} · ${succeeded ? t(cartridge.locale, 'checkSuccess') : t(cartridge.locale, 'checkFailure')}`,
+      data: { dc: check.dc, roll: check.roll, modifier: check.modifier, total: check.total, outcome: check.outcome },
+    })
+  }
+  effects.push(...settleDangerTurn(save, next, parsed, cartridge, dangerDirective))
 
   // Ordinary scenes must remain playable even when an AI response omits or
   // truncates its machine-readable choices. A real checkpoint may still use

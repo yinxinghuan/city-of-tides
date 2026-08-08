@@ -16,6 +16,7 @@
     "test:production-backend": "node _qa/production-backend.mjs",
     "test:release-visual": "node --loader tsx _qa/release-visual.ts",
     "test:protocol": "TMPDIR=/private/tmp tsx _qa/protocol.ts",
+    "test:danger": "TMPDIR=/private/tmp tsx _qa/danger-director.ts",
     "test:persistence": "node _qa/persistence.mjs",
     "test:item-images": "node _qa/item-images.mjs",
     "test:image-director": "TMPDIR=/private/tmp tsx _qa/image-director.ts",
