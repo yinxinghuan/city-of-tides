@@ -5,7 +5,7 @@ import { anchorKey, grantStatusKey, inventoryItemKey, localizeTraceMessage, noti
 import type { Locale, RegionId, TraceKind, TraceView, Traveller } from './types'
 import { useCityWorld } from './useCityWorld'
 import { useTideAudio } from './useTideAudio'
-import { isInAigram, openAigramProfile } from '../shared/runtime/bridge'
+import { isInAigramNow, openAigramProfile } from '../shared/runtime/bridge'
 
 type DrawerTab = 'regions' | 'pack' | 'season' | 'anchors' | 'lab'
 type TextSize = 'small' | 'standard' | 'large'
@@ -38,7 +38,7 @@ function TraceMessage({ trace, traveller, mine, activeUserId, locale, t, onOpen,
     <div className="ct-message__body">
       <div className="ct-message__bubble">
         <span className="ct-message__meta">
-          {mine ? <strong className="ct-author-self">{t('you')}</strong> : <button type="button" className="ct-author-chip" disabled={!isInAigram} onClick={(event) => { event.stopPropagation(); openAigramProfile(author.id) }}><Avatar traveller={author}/><strong>{author.name}</strong></button>}
+          {mine ? <strong className="ct-author-self">{t('you')}</strong> : <button type="button" className="ct-author-chip" disabled={!isInAigramNow()} onClick={(event) => { event.stopPropagation(); openAigramProfile(author.id) }}><Avatar traveller={author}/><strong>{author.name}</strong></button>}
           <small>{t(traceKindKey(trace.kind))}</small><time>{hours}h</time>
         </span>
         <button type="button" className="ct-message__content" onClick={onOpen}><p>{localizeTraceMessage(trace.message, locale)}</p>

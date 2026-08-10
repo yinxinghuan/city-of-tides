@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { readWorld } from './engine'
 import { DEMO_TRAVELLERS } from './demo'
 import { LocalSharedWorldGateway, RemoteSharedWorldGateway } from './gateway'
-import { isInAigram, telegramId } from '../shared/runtime/bridge'
+import { isInAigramNow, getTelegramId } from '../shared/runtime/bridge'
 import { usePlayerProfile } from '../story/usePlayerProfile'
 import { useGrantInventory } from './useGrantInventory'
 import type { CommitCode, RegionId, TraceKind, Traveller, WorldAction, WorldArchive, WorldView } from './types'
@@ -26,7 +26,7 @@ export function useCityWorld() {
   const [notice, setNotice] = useState<Notice | null>(null)
   const [busy, setBusy] = useState(false)
   const platformTraveller: Traveller = {
-    id: telegramId || '__alteru_guest__',
+    id: getTelegramId()! || '__alteru_guest__',
     name: profile.name,
     initials: profile.name.slice(0, 2).toUpperCase(),
     avatarUrl: profile.avatarUrl,
@@ -35,8 +35,8 @@ export function useCityWorld() {
   const activeTraveller = labMode || gateway.mode === 'local'
     ? travellers.find((item) => item.id === activeTravellerId) || travellers[0]
     : platformTraveller
-  const privateInventoryEnabled = gateway.mode === 'remote' && !labMode && isInAigram && Boolean(telegramId)
-  const grantInventory = useGrantInventory(gateway, String(telegramId || ''), privateInventoryEnabled, view?.cursor ?? 0)
+  const privateInventoryEnabled = gateway.mode === 'remote' && !labMode && isInAigramNow() && Boolean(getTelegramId()!)
+  const grantInventory = useGrantInventory(gateway, String(getTelegramId()! || ''), privateInventoryEnabled, view?.cursor ?? 0)
 
   const refresh = useCallback(async () => {
     const next = await gateway.load()
@@ -88,12 +88,12 @@ export function useCityWorld() {
   const contribute = useCallback((regionId: RegionId, message: string) => commit((base) => ({ ...base, type: 'contribute_project', payload: { regionId, amount: 25, message } })), [commit])
   const resolveSeason = useCallback(() => commit((base) => ({ ...base, type: 'resolve_season', payload: { force: true } })), [commit])
   const reportTrace = useCallback(async (traceId: string) => {
-    if (gateway.mode !== 'remote' || !isInAigram || !telegramId) {
+    if (gateway.mode !== 'remote' || !isInAigramNow() || !getTelegramId()!) {
       setNotice({ kind: 'error', code: 'AUTH_REQUIRED' })
       return false
     }
     try {
-      await gateway.reportTrace(traceId, String(telegramId))
+      await gateway.reportTrace(traceId, String(getTelegramId()!))
       await refresh()
       setNotice({ kind: 'success', code: 'REPORT_SAVED' })
       return true

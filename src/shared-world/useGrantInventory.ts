@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useGameSave } from '../shared/save/useGameSave'
-import { callAigramAPI, isInAigram, telegramId, type AigramResponse } from '../shared/runtime/bridge'
+import { callAigramAPI, isInAigramNow, getTelegramId, type AigramResponse } from '../shared/runtime/bridge'
 import { getGameUuid } from '../shared/runtime/game-id'
 import type { SharedWorldGateway } from './gateway'
 import { applyPendingGrants, emptyPlayerSave, includesGrantReceipts, normalizePlayerSave } from './playerInventory'
@@ -13,10 +13,10 @@ const wait = (milliseconds: number) => new Promise<void>((resolve) => window.set
 
 async function cloudContains(receiptIds: string[]): Promise<boolean> {
   const sessionId = getGameUuid()
-  if (!isInAigram || !sessionId || !telegramId) return false
+  if (!isInAigramNow() || !sessionId || !getTelegramId()!) return false
   try {
     const response = await callAigramAPI<AigramResponse<SaveRow[]>>(`/note/aigram/ai/game/get/data/list?session_id=${encodeURIComponent(sessionId)}`)
-    const mine = (Array.isArray(response?.data) ? response.data : []).find((row) => String(row.user_id) === String(telegramId))
+    const mine = (Array.isArray(response?.data) ? response.data : []).find((row) => String(row.user_id) === String(getTelegramId()!))
     if (!mine?.resource_data) return false
     return includesGrantReceipts(JSON.parse(mine.resource_data), receiptIds)
   } catch {
@@ -55,7 +55,7 @@ export function useGrantInventory(gateway: SharedWorldGateway, userId: string, e
   }, [mirror, persist])
 
   const reconcile = useCallback(async () => {
-    if (!enabled || mirror === undefined || syncing.current || !telegramId || String(telegramId) !== String(userId)) return
+    if (!enabled || mirror === undefined || syncing.current || !getTelegramId()! || String(getTelegramId()!) !== String(userId)) return
     syncing.current = true
     try {
       const receipts = await gateway.listPendingGrants(userId)

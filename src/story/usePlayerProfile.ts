@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { callAigramAPI, isInAigram, telegramId, type AigramResponse } from '../shared/runtime/bridge'
+import { callAigramAPI, isInAigramNow, getTelegramId, type AigramResponse } from '../shared/runtime/bridge'
 
 interface ProfileData { name?: string; user_name?: string; head_url?: string }
 
@@ -24,17 +24,17 @@ export function usePlayerProfile(): PlayerProfile {
     name: debugName || 'AlterU',
     avatarUrl: debugAvatar || fallbackAvatar,
     imageRefUrl: publicHttpsUrl(debugAvatar),
-    loaded: !isInAigram,
+    loaded: !isInAigramNow(),
     source: debugAvatar || debugName ? 'debug' : 'default',
   }))
 
   useEffect(() => {
-    if (!isInAigram || !telegramId) return
+    if (!isInAigramNow() || !getTelegramId()!) return
     let cancelled = false
     ;(async () => {
       try {
         const response = await callAigramAPI<AigramResponse<ProfileData>>(
-          `/note/telegram/user/get/info/by/telegram_id?telegram_id=${encodeURIComponent(telegramId)}`,
+          `/note/telegram/user/get/info/by/telegram_id?telegram_id=${encodeURIComponent(getTelegramId()!)}`,
           'GET',
         )
         if (cancelled) return
