@@ -15,10 +15,11 @@ export function useGameSave<T>(gameId: string) {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      if (canSync && sessionId && getTelegramId()!) {
+      const currentTelegramId = getTelegramId()!
+      if (isInAigramNow() && sessionId && currentTelegramId) {
         try {
           const response = await callAigramAPI<AigramResponse<SaveRow[]>>(`/note/aigram/ai/game/get/data/list?session_id=${encodeURIComponent(sessionId)}`)
-          const mine = (Array.isArray(response?.data) ? response.data : []).find((row) => String(row.user_id) === String(currentTelegramId)!)
+          const mine = (Array.isArray(response?.data) ? response.data : []).find((row) => String(row.user_id) === String(currentTelegramId))
           if (mine?.resource_data) { const parsed = JSON.parse(mine.resource_data) as T; if (!cancelled) setSavedData(parsed); return }
         } catch { /* use local */ }
       }
