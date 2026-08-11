@@ -34,6 +34,9 @@ async function open(width: number, height: number, platform: boolean) {
     url.searchParams.set('user_name', 'Release Viewer')
   }
   await page.goto(url.href, { waitUntil: 'domcontentloaded' })
+  await page.waitForSelector('.ct-entry')
+  await page.waitForFunction(() => !document.querySelector('.ct-entry__copy > button')?.hasAttribute('disabled'))
+  await page.locator('.ct-entry__copy > button').click()
   await page.waitForSelector('.ct-shell')
   if (platform) await page.addStyleTag({ content: '#alteru-guest-banner,#alteru-guest-login{display:none!important}' })
   return { context, page, errors }
