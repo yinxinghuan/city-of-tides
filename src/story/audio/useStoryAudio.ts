@@ -5,7 +5,7 @@ import { StorySynth, type StoryAudioCue } from './StorySynth'
 const AUDIO_MUTED_KEY = 'alteru_story_audio_muted'
 
 function readMuted(): boolean {
-  try { return localStorage.getItem(AUDIO_MUTED_KEY) === '1' } catch { return false }
+  try { return alteruLocalStorage.getItem(AUDIO_MUTED_KEY) === '1' } catch { return false }
 }
 
 function calculateTension(cartridge: StoryCartridge, save: StorySave): number {
@@ -35,7 +35,7 @@ export function useStoryAudio(cartridge: StoryCartridge, save: StorySave) {
 
   useEffect(() => {
     synthRef.current?.setMuted(muted)
-    try { localStorage.setItem(AUDIO_MUTED_KEY, muted ? '1' : '0') } catch { /* private storage can reject writes */ }
+    try { alteruLocalStorage.setItem(AUDIO_MUTED_KEY, muted ? '1' : '0') } catch { /* private storage can reject writes */ }
   }, [muted])
 
   useEffect(() => {

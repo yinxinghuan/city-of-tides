@@ -18,7 +18,7 @@ export class LocalSharedWorldGateway implements SharedWorldGateway {
 
   private readArchive() {
     try {
-      const raw = localStorage.getItem(this.key)
+      const raw = alteruLocalStorage.getItem(this.key)
       if (raw) return rebuildArchive(JSON.parse(raw))
     } catch { /* fall through */ }
     const fresh = createDemoWorld()
@@ -27,7 +27,7 @@ export class LocalSharedWorldGateway implements SharedWorldGateway {
   }
 
   private writeArchive(archive: WorldArchive) {
-    localStorage.setItem(this.key, JSON.stringify(archive))
+    alteruLocalStorage.setItem(this.key, JSON.stringify(archive))
   }
 
   async load(now = Date.now()) {

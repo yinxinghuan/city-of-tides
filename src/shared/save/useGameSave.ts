@@ -23,7 +23,7 @@ export function useGameSave<T>(gameId: string) {
           if (mine?.resource_data) { const parsed = JSON.parse(mine.resource_data) as T; if (!cancelled) setSavedData(parsed); return }
         } catch { /* use local */ }
       }
-      try { const local = localStorage.getItem(key); if (local) { if (!cancelled) setSavedData(JSON.parse(local) as T); return } } catch { /* empty */ }
+      try { const local = alteruLocalStorage.getItem(key); if (local) { if (!cancelled) setSavedData(JSON.parse(local) as T); return } } catch { /* empty */ }
       if (!cancelled) setSavedData(null)
     })()
     return () => { cancelled = true }
@@ -36,7 +36,7 @@ export function useGameSave<T>(gameId: string) {
 
   const persist = useCallback((value: T) => {
     const stamped = { ...(value as object), _lastActive: Date.now() } as T
-    try { localStorage.setItem(key, JSON.stringify(stamped)) } catch { /* quota */ }
+    try { alteruLocalStorage.setItem(key, JSON.stringify(stamped)) } catch { /* quota */ }
     if (isInAigramNow()) { pending.current = stamped; if (timer.current) clearTimeout(timer.current); timer.current = setTimeout(flush, 1000) }
   }, [flush, key])
 
@@ -49,7 +49,7 @@ export function useGameSave<T>(gameId: string) {
 
   const clear = useCallback(async () => {
     if (timer.current) clearTimeout(timer.current); timer.current = null; pending.current = null
-    try { localStorage.removeItem(key) } catch { /* ignore */ }
+    try { alteruLocalStorage.removeItem(key) } catch { /* ignore */ }
     if (isInAigramNow() && sessionId) postAigramAPI('/note/aigram/ai/game/save/data', { session_id: sessionId, resource_data: '' })
     setSavedData(null)
   }, [key, sessionId])

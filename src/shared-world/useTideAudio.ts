@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 type Cue = 'district' | 'trace' | 'reply' | 'anchor' | 'warning'
 
 export function useTideAudio() {
-  const [muted, setMuted] = useState(() => localStorage.getItem('city-of-tides-muted') === '1')
+  const [muted, setMuted] = useState(() => alteruLocalStorage.getItem('city-of-tides-muted') === '1')
   const contextRef = useRef<AudioContext | null>(null)
 
   const ensure = useCallback(() => {
@@ -43,7 +43,7 @@ export function useTideAudio() {
 
   const toggleMuted = useCallback(() => setMuted((current) => {
     const next = !current
-    localStorage.setItem('city-of-tides-muted', next ? '1' : '0')
+    alteruLocalStorage.setItem('city-of-tides-muted', next ? '1' : '0')
     if (next) contextRef.current?.suspend().catch(() => {})
     return next
   }), [])

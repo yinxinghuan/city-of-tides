@@ -31,14 +31,14 @@ function isArchive(candidate: PersistedStoryData | null | undefined): candidate 
 
 function readLegacyLocal(cartridgeId: string): LegacyStorySave | null {
   try {
-    const raw = localStorage.getItem(`stateful-story-${cartridgeId}-save`)
+    const raw = alteruLocalStorage.getItem(`stateful-story-${cartridgeId}-save`)
     return raw ? JSON.parse(raw) as LegacyStorySave : null
   } catch { return null }
 }
 
 function readSharedTemplateLocal(cartridgeId: string): LegacyStorySave | null {
   try {
-    const raw = localStorage.getItem('stateful-story-template-save')
+    const raw = alteruLocalStorage.getItem('stateful-story-template-save')
     if (!raw) return null
     const stored = JSON.parse(raw) as PersistedStoryData
     return isArchive(stored) ? (stored.worlds[cartridgeId] as LegacyStorySave | undefined) ?? null : stored.cartridgeId === cartridgeId ? stored : null

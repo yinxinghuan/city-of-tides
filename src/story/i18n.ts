@@ -268,7 +268,7 @@ export function t(locale: Locale, key: TranslationKey, vars: Record<string, stri
 export function detectLocale(): Locale {
   const query = new URLSearchParams(window.location.search).get('lang')
   if (query === 'zh' || query === 'en') return query
-  const saved = localStorage.getItem('game_locale')
+  const saved = alteruLocalStorage.getItem('game_locale')
   if (saved === 'zh' || saved === 'en') return saved
   return navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en'
 }
@@ -281,5 +281,5 @@ export function detectTextLocale(text: string, current: Locale): Locale {
 }
 
 export function rememberLocale(locale: Locale): void {
-  localStorage.setItem('game_locale', locale)
+  alteruLocalStorage.setItem('game_locale', locale)
 }

@@ -79,7 +79,7 @@ const TEXT_SIZE_KEY = 'alteru_story_text_size'
 const textSizes: TextSize[] = ['small', 'standard', 'large']
 
 function readTextSize(): TextSize {
-  const saved = localStorage.getItem(TEXT_SIZE_KEY)
+  const saved = alteruLocalStorage.getItem(TEXT_SIZE_KEY)
   return textSizes.includes(saved as TextSize) ? saved as TextSize : 'standard'
 }
 
@@ -374,7 +374,7 @@ function Game({ cartridge, mode, chatId, onSelect, onLocaleChange }: { cartridge
   const audioBlockCount = useRef(0)
   const readyAudioImages = useRef<Set<string>>(new Set())
   const lastAudioError = useRef('')
-  const setTextSize = (size: TextSize) => { localStorage.setItem(TEXT_SIZE_KEY, size); setTextSizeState(size) }
+  const setTextSize = (size: TextSize) => { alteruLocalStorage.setItem(TEXT_SIZE_KEY, size); setTextSizeState(size) }
   const openWorld = (active: DrawerId = worldTab, detail: WorldDetail | null = null) => {
     setWorldTab(active)
     setWorldDetail(detail)

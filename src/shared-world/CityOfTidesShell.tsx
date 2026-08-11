@@ -67,7 +67,7 @@ export default function CityOfTidesShell() {
   const [message, setMessage] = useState('')
   const [replyToId, setReplyToId] = useState<string | undefined>()
   const [confirmReset, setConfirmReset] = useState(false)
-  const [textSize, setTextSize] = useState<TextSize>(() => (localStorage.getItem('city-of-tides-text-size') as TextSize) || 'standard')
+  const [textSize, setTextSize] = useState<TextSize>(() => (alteruLocalStorage.getItem('city-of-tides-text-size') as TextSize) || 'standard')
   const feedRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const submissionRef = useRef(false)
@@ -138,7 +138,7 @@ export default function CityOfTidesShell() {
 
   const cycleTextSize = () => {
     const next: TextSize = textSize === 'small' ? 'standard' : textSize === 'standard' ? 'large' : 'small'
-    localStorage.setItem('city-of-tides-text-size', next)
+    alteruLocalStorage.setItem('city-of-tides-text-size', next)
     setTextSize(next)
   }
 

@@ -11,7 +11,7 @@ import type { CommitCode, RegionId, TraceKind, Traveller, WorldAction, WorldArch
 type Notice = { kind: 'success' | 'error' | 'info'; code: CommitCode | 'LOADED' | 'RESET' | 'REPORT_SAVED' }
 
 function currentTravellerId() {
-  try { return localStorage.getItem('city-of-tides-active-traveller') || DEMO_TRAVELLERS[0].id } catch { return DEMO_TRAVELLERS[0].id }
+  try { return alteruLocalStorage.getItem('city-of-tides-active-traveller') || DEMO_TRAVELLERS[0].id } catch { return DEMO_TRAVELLERS[0].id }
 }
 
 export function useCityWorld() {
@@ -59,7 +59,7 @@ export function useCityWorld() {
 
   const setActiveTravellerId = useCallback((id: string) => {
     setActiveTravellerIdState(id)
-    try { localStorage.setItem('city-of-tides-active-traveller', id) } catch { /* ignore */ }
+    try { alteruLocalStorage.setItem('city-of-tides-active-traveller', id) } catch { /* ignore */ }
   }, [])
 
   const commit = useCallback(async (make: (base: Pick<WorldAction, 'actionId' | 'actorUserId' | 'expectedVersion' | 'createdAt'>) => WorldAction) => {

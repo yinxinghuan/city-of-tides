@@ -69,14 +69,14 @@ const copy = {
 export type CopyKey = keyof typeof copy.zh
 
 function detectLocale(): Locale {
-  const stored = localStorage.getItem('game_locale')
+  const stored = alteruLocalStorage.getItem('game_locale')
   if (stored === 'zh' || stored === 'en') return stored
   return navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en'
 }
 
 export function useCityI18n() {
   const [locale, setLocaleState] = useState<Locale>(detectLocale)
-  const setLocale = useCallback((next: Locale) => { localStorage.setItem('game_locale', next); setLocaleState(next) }, [])
+  const setLocale = useCallback((next: Locale) => { alteruLocalStorage.setItem('game_locale', next); setLocaleState(next) }, [])
   const t = useCallback((key: CopyKey, vars?: Record<string, string | number>) => {
     let value: string = copy[locale][key]
     for (const [name, replacement] of Object.entries(vars || {})) value = value.replace(`{${name}}`, String(replacement))
