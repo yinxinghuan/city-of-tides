@@ -3,6 +3,7 @@ import { readWorld } from './engine'
 import { DEMO_TRAVELLERS } from './demo'
 import { LocalSharedWorldGateway, RemoteSharedWorldGateway } from './gateway'
 import { isInAigramNow, getTelegramId } from '../shared/runtime/bridge'
+import { getGameApiBase } from '../shared/runtime/game-api-base'
 import { usePlayerProfile } from '../story/usePlayerProfile'
 import { useGrantInventory } from './useGrantInventory'
 import type { CommitCode, RegionId, TraceKind, Traveller, WorldAction, WorldArchive, WorldView } from './types'
@@ -17,7 +18,8 @@ export function useCityWorld() {
   const profile = usePlayerProfile()
   const query = useMemo(() => new URLSearchParams(window.location.search), [])
   const labMode = query.get('lab') === '1'
-  const apiBase = query.get('api_base') || import.meta.env.VITE_ALTERU_API_BASE || ''
+  const localMode = query.get('local') === '1'
+  const apiBase = query.get('api_base') || (localMode ? '' : getGameApiBase())
   const gateway = useMemo(() => apiBase ? new RemoteSharedWorldGateway(apiBase, labMode) : new LocalSharedWorldGateway(), [apiBase, labMode])
   const [archive, setArchive] = useState<WorldArchive | null>(null)
   const [view, setView] = useState<WorldView | null>(null)

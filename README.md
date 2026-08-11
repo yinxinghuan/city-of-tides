@@ -13,7 +13,7 @@ npm run dev
 npm run build
 ```
 
-The default MiniAPP and web entry is the asynchronous shared world. The production frontend and API are served together under the permanent game session ID at `https://game.aiwaves.tech/1a2916b0-8751-4e5d-9f9b-92daf5f7c96f`. GitHub stores the canonical source and version history and publishes a frontend mirror from the same commit; the mirror uses the same production API and does not create a second shared-world database. Public shared-world writes remain a bounded beta until AlterU exposes a signed identity proof that custom game Workers can verify.
+The default MiniAPP and web entry is the asynchronous shared world. The production frontend and API are served together under the game UUID path. Game-owned requests derive `API_BASE` as `"/" + GAME_ID`, so a Remix receives its own Worker and database when the generated game ID is replaced; no production env or source-game backend URL is embedded in the frontend. GitHub stores the canonical source and version history, but its Pages build is not an authoritative multiplayer runtime because GitHub cannot serve the same-Worker API path. Public shared-world writes remain a bounded beta until AlterU exposes a signed identity proof that custom game Workers can verify.
 
 ## Technology and notices
 

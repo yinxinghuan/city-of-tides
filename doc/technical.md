@@ -6,6 +6,7 @@
 - 状态：追加式共享世界事件、纯函数 reducer、每 15 秒可见态轮询；Web Audio 程序化音景。
 - 远端：Cloudflare Worker、Durable Object 与 SQLite；正式前端和 API 共用永久 session ID 路径 `https://game.aiwaves.tech/1a2916b0-8751-4e5d-9f9b-92daf5f7c96f`。
 - 身份与个人存档：实时读取 Aigram shell 身份；资料接口读取 `name/head_url`；`useGameSave` 保存援助回执镜像与个人进入记录。
+- 自有后台寻址：`getGameApiBase()` 从 Remix 可替换的 `GAME_ID` 派生 `"/" + GAME_ID`；禁止 `.env.production` 或源码写死正式域名/旧 UUID。平台用户、排行榜、存档等 API 仍走 Aigram bridge，不使用该 base。
 - 默认入口：`src/main.tsx` 直接渲染异步共享世界 `CityOfTidesShell`。个人故事引擎仍保留为未发布研究代码，不参与默认 MiniAPP/网页 bundle 入口。
 
 ## 2. 目录结构
@@ -18,6 +19,7 @@ src/shared-world/
   engine.ts                          # 确定性事件 reducer 与读模型
   gateway.ts                         # Local / Remote SharedWorldGateway
   useCityWorld.ts                    # 身份、轮询、提交、冲突恢复和区域状态
+  ../shared/runtime/game-api-base.ts # 从 GAME_ID 派生同 Worker API base
   useGrantInventory.ts               # pending 回执、云存档回读确认与 ack 补偿
   playerInventory.ts                 # receipt_id 去重与个人行囊纯函数
   types.ts                           # 世界事件、行动、视图与玩家类型
@@ -39,7 +41,7 @@ _qa/
 
 ### 默认入口与响应式布局
 
-- `src/main.tsx` 静态导入 `CityOfTidesShell` 和 `city-of-tides.less`，保证 MiniAPP、正式主站和 Pages 镜像默认打开共享世界，而不是个人故事 `StoryShell`。
+- `src/main.tsx` 静态导入 `CityOfTidesShell` 和 `city-of-tides.less`，保证 MiniAPP 与 UUID 正式主站默认打开共享世界，而不是个人故事 `StoryShell`。Pages 只验证同 commit 静态构建，不作为共享 API 运行时。
 - 首次打开只渲染封面入口；共享世界数据在背景加载，按钮就绪后进入主 Shell。
 - Shell 使用单列 CSS Grid；720 px 以下占满 `100dvh`，对话区独立滚动，底部行动区保持可见。
 - platform-layout 按没有外部访客栏的真实平台构图验收；external-guest 只检查远程覆盖后游戏仍可操作。
@@ -48,7 +50,8 @@ _qa/
 
 - `WorldArchive.events` 是可回放事件记录；`readWorld()` 推导区域值、有效痕迹、工程、锚点与领取回执。
 - `commitWorldAction()` 校验版本、幂等键、实体状态和不同用户门槛。
-- 无 API 配置时 `LocalSharedWorldGateway` 把 demo archive 存入 localStorage；正式构建由 `.env.production` 配置 Remote Gateway。
+- 默认通过 `getGameApiBase()` 连接 `/<GAME_ID>/api/*`；部署路由在 Worker 前剥掉 `/<GAME_ID>`，Worker 内仍处理 `/api/*`。
+- `?api_base=` 只用于明确的 staging/QA 覆盖；`?local=1` 才启用 `LocalSharedWorldGateway` 的离线 demo。正式构建不读取任何 `VITE_*_API_BASE`。
 - Remote Gateway 先执行 ensure/state，再提交 action；版本冲突最多重试 3 次，并复用同一个 `action_id`。
 - `useCityWorld()` 在远端模式使用当前 Aigram 玩家；每 15 秒及页面重新可见时刷新世界。
 
@@ -85,9 +88,10 @@ _qa/
 - 调数值、TTL、工程门槛：同步修改 `src/shared-world/engine.ts` 与 `worker/index.js`，并补 reducer/后端测试。
 - 新增公共物品：扩展 `TraceKind`、Worker grant payload、`playerInventory.ts` 与回执 ack 流程。
 - 换共享世界表现层：保留 `SharedWorldGateway`、`WorldArchive/WorldAction` 与 reducer，替换 `CityOfTidesShell.tsx` 和 Less。
-- 更换平台 World API：新增 Gateway 实现并更新 `.env.production`；不要把 API 请求发到 GitHub Pages origin。
+- 更换游戏自有 World API：保留 `getGameApiBase()` 的 `/<GAME_ID>` 挂载合同并新增 Gateway 实现；禁止用 env 或绝对 URL 绑定源游戏 Worker。
+- 平台开放 API：继续通过 `callAigramAPI()` / `postAigramAPI()` 与 `api_origin` 宿主桥接，不能与游戏自有 `API_BASE` 混用。
 - 恢复或继续个人冒险研究：从 `src/story/` 单独建立明确的新产品入口；不得再次静默替换当前共享世界默认入口。
-- 发布：同一 commit 同时构建正式 session ID 主站和 GitHub Pages 镜像，分别检查实际 bundle 含共享世界入口独特字符串。
+- 发布：正式多人验收以同 Worker 的 UUID 主站为准；Pages 只承担源码/静态构建镜像，不声称共享世界可写可读。Remix 后必须检查 bundle 中不含源游戏绝对 host/UUID API base。
 
 ## 5. 已知限制与生产边界
 
