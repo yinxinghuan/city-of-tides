@@ -39,7 +39,7 @@ _qa/
 
 ## 3. 核心模块
 
-`StorySave.version = 7` 新增 `facts`。模型可用 `[fact]` 持久化发现、承诺和路线选择，`worldContext.ts` 每轮把权威事实回送给续写模型；已有地点、人物、关系和事实仍只能由 reducer 提交。
+未发布的个人冒险研究引擎使用 `StorySave.version = 8`，包含 `facts` 与 `decisionContext`。模型可用 `[fact]` 持久化发现、承诺和路线选择，`worldContext.ts` 每轮把权威事实回送给续写模型；已有地点、人物、关系和事实仍只能由 reducer 提交。它不参与默认产品 bundle。
 
 `domainRules.ts` 在危险调度与 adapter 之前处理三项返乡首选：旧路、救尼洛、登高观察。命中规则时完全跳过模型调用，本地文本、事实、数值、时钟、地图、目标、人物登场与三项后续选择原子提交；重复动作只给拒绝结果，不重复领取收益。尼洛使用 `hiddenUntilIntroduced`，只有“救人”正文成立的同一回合才进入人物存档。
 
@@ -107,6 +107,6 @@ _qa/
 
 ## 连续性守门（2026-08-13）
 
-- Cartridge 通过 `transitionAnchor` 声明“逆潮罗盘与随身潮汐航图”；`src/story/engine/continuity.ts` 生成地点桥接、压缩 `decisionContext` 并核验选项名词是否已有可见依据。
-- `reducer.ts` 在 `map_update` 与受管辖地图事务提交前插入桥接，并在选择落入 UI 前执行 grounded-choice 检查；旧存档升级到 StorySave v8 时从现有目标补齐 `decisionContext`。
-- `_qa/continuity-gate.ts` 以未登场的“国王 / 快递员 / 玻璃王国”作为反例，同时断言中转锚点先于目的地正文。
+- 正式入口的区域选择由 `CityOfTidesShell.tsx` 的 `pendingRegionId` 分成两步：先打开 `.ct-transit` 渡口潮图台，确认后才调用 `setSelectedRegionId()`；取消不会改变当前区域。
+- `src/shared-world/i18n.ts` 维护中英双语的出发区、目的区和中转说明；快捷行动继续来自按区域穷举的 `ACTIONS`，不存在由生成文本临时塞入陌生人物或任务名的入口。
+- 未发布的个人冒险研究引擎仍通过 Cartridge `transitionAnchor`、`continuity.ts` 与 reducer 执行生成选项接地和地图桥接；`_qa/continuity-gate.ts` 只证明该研究引擎，不代替默认共享世界入口的视觉验收。

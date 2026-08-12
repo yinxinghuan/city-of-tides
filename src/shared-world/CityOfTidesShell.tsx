@@ -58,6 +58,7 @@ export default function CityOfTidesShell() {
   const audio = useTideAudio()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerTab, setDrawerTab] = useState<DrawerTab>('regions')
+  const [pendingRegionId, setPendingRegionId] = useState<RegionId | null>(null)
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null)
   const [entered, setEntered] = useState(false)
   const [resumeDialogDismissed, setResumeDialogDismissed] = useState(false)
@@ -196,7 +197,18 @@ export default function CityOfTidesShell() {
   }
 
   const selectRegion = (id: RegionId) => {
-    world.setSelectedRegionId(id)
+    if (id === regionId) {
+      setDrawerOpen(false)
+      return
+    }
+    setPendingRegionId(id)
+    setDrawerOpen(false)
+  }
+
+  const arriveAtRegion = () => {
+    if (!pendingRegionId) return
+    world.setSelectedRegionId(pendingRegionId)
+    setPendingRegionId(null)
     setComposerOpen(false)
     setReplyToId(undefined)
     setMessage('')
@@ -250,6 +262,18 @@ export default function CityOfTidesShell() {
           </form>
         </div>}
       </footer>
+
+      {pendingRegionId && <div className="ct-transit" role="presentation">
+        <section role="dialog" aria-modal="true" aria-labelledby="ct-transit-title">
+          <small>{t('transitEyebrow')}</small>
+          <span className="ct-transit__mark"><MapIcon/><i/><AnchorIcon/></span>
+          <h2 id="ct-transit-title">{t('transitTitle')}</h2>
+          <p>{t('transitBody', { from: t(regionKey(regionId)), to: t(regionKey(pendingRegionId)) })}</p>
+          <div><span>{t(regionKey(regionId))}</span><WaveIcon/><strong>{t(regionKey(pendingRegionId))}</strong></div>
+          <button type="button" autoFocus onClick={arriveAtRegion}>{t('transitContinue')}<WaveIcon/></button>
+          <button type="button" className="ct-transit__cancel" onClick={() => setPendingRegionId(null)}>{t('cancel')}</button>
+        </section>
+      </div>}
 
       {drawerOpen && <div className="ct-drawer">
         <button type="button" className="ct-drawer__scrim" onClick={() => setDrawerOpen(false)} aria-label={t('close')}/>
