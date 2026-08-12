@@ -57,6 +57,7 @@ export function buildWorldContext(context: AdapterContext) {
         min: definition.min,
         max: definition.max,
       })),
+      facts: save.facts,
       activeParty: activeParty.map(characterSnapshot),
       knownCharacters: [...activeParty, ...recentKnown].map(characterSnapshot),
       map: save.map,

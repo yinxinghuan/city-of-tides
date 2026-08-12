@@ -28,6 +28,7 @@
     "test:interaction-shell": "node _qa/interaction-shell.mjs",
     "test:city-prologue": "TMPDIR=/private/tmp tsx _qa/city-prologue.ts",
     "test:city-browser": "node _qa/city-v2-browser.mjs"
+    ,"test:domain": "TMPDIR=/private/tmp tsx _qa/domain-rules.ts"
   },
   "dependencies": {
     "react": "^18.3.1",

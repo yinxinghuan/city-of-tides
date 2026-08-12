@@ -29,9 +29,10 @@ export interface StatDefinition {
   dangerAt?: number
   maxDelta?: number
 }
+export type StoryFactValue = string | number | boolean
 export interface SkillDefinition { id: string; label: string; value: number }
 export type CharacterStatus = 'known' | 'companion' | 'departed'
-export interface CharacterDefinition { id: string; name: string; role: string; vitality: number; stress: number; skills: SkillDefinition[]; detail?: string; lore?: string; initialStatus?: CharacterStatus }
+export interface CharacterDefinition { id: string; name: string; role: string; vitality: number; stress: number; skills: SkillDefinition[]; detail?: string; lore?: string; initialStatus?: CharacterStatus; hiddenUntilIntroduced?: boolean }
 export interface StoryCharacter extends CharacterDefinition {
   status: CharacterStatus
   origin: 'cartridge' | 'generated'
@@ -143,6 +144,33 @@ export interface StoryImageDirector {
   softTriggers: SceneImageTrigger[]
 }
 
+export type DomainEffect =
+  | { type: 'fact'; key: string; value: StoryFactValue }
+  | { type: 'stat'; id: string; delta: number }
+  | { type: 'map'; location: string }
+  | { type: 'clock'; value: string }
+  | { type: 'objective'; value: string }
+  | { type: 'character'; id: string; status?: CharacterStatus }
+
+export interface DomainRule {
+  id: string
+  when: { factEquals?: Record<string, StoryFactValue>; factUnset?: string[] }
+  action: { exact?: string[]; includes?: string[] }
+  effects: DomainEffect[]
+  successText: string
+  successChoices: [string, string, string]
+  rejectionText?: string
+  rejectionChoices?: [string, string, string]
+}
+
+export interface DomainActionResolution {
+  kind: 'accepted' | 'rejected'
+  ruleId: string
+  text: string
+  effects: DomainEffect[]
+  choices: [string, string, string]
+}
+
 export interface StoryCartridge {
   schemaVersion: 1
   id: CartridgeId
@@ -161,6 +189,8 @@ export interface StoryCartridge {
   imageDirector?: StoryImageDirector
   director?: StoryDirector
   dangerDirector?: StoryDangerDirector
+  domainRules?: DomainRule[]
+  initialFacts?: Record<string, StoryFactValue>
   statDefinitions: [StatDefinition, StatDefinition, StatDefinition]
   drawerLabels: Record<DrawerId, string>
   opening: { location: string; time: string; objective: string; imagePrompt: string; blocks: StoryBlock[]; choices: Choice[] }
@@ -174,7 +204,7 @@ export interface StoryCartridge {
 export interface DemoTurn { match: string[]; content: string; imagePrompt?: string; imageSubject?: SceneImageSubject }
 
 export interface StorySave {
-  version: 6
+  version: 7
   cartridgeId: CartridgeId
   locale: Locale
   remoteChatId?: string
@@ -184,6 +214,7 @@ export interface StorySave {
   time: string
   objective: string
   stats: Record<string, number>
+  facts: Record<string, StoryFactValue>
   blocks: StoryBlock[]
   choices: Choice[]
   map: MapNode[]
@@ -209,6 +240,7 @@ export type ParsedCommand =
   | { type: 'skill_check'; skill: string; dc: number; roll: number; modifier: number; total: number; result: string }
   | { type: 'state'; value: string }
   | { type: 'clock'; value: string }
+  | { type: 'fact'; key: string; value: StoryFactValue }
   | { type: 'map_update'; location: string; connectedTo?: string; detail?: string; lore?: string; facts?: string[] }
   | { type: 'inventory'; action: 'add' | 'remove'; item: string; count: number; rarity?: 'common' | 'rare' | 'legendary'; detail?: string; effect?: string; lore?: string; metrics?: EntityMetric[]; imagePrompt?: string }
   | { type: 'reputation'; npc: string; action: string }

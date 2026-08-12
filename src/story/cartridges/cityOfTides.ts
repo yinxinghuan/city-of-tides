@@ -96,6 +96,45 @@ function build(locale: Locale): StoryCartridge {
         fallbackCosts: [{ statId: 'tide-breath', operation: 'remove', amount: 8 }],
       },
     } satisfies StoryDangerDirector,
+    initialFacts: { 'mira-recording-heard': true },
+    domainRules: [
+      {
+        id: 'opening-old-road', when: { factUnset: ['opening-path'] },
+        action: { exact: [s('趁旧路显露，跟着罗盘提前下船', 'Follow the compass onto the exposed road')] },
+        effects: [
+          { type: 'fact', key: 'opening-path', value: 'old-road' }, { type: 'fact', key: 'old-road-entered', value: true },
+          { type: 'stat', id: 'tide-breath', delta: -6 }, { type: 'map', location: 'old-tide-road' },
+          { type: 'clock', value: s('归潮日 · 05:55 · 最低潮', 'Homecoming · 05:55 · Lowest tide') },
+          { type: 'objective', value: s('在回潮前读出旧路潮铜里的回声', 'Read the tide-copper echo before the water returns') },
+        ],
+        successText: s('你没有等渡船靠岸。折潮帆接住一阵横风，把你送到仍在滴水的旧石路上。逆潮罗盘的细针停住，石缝中的潮铜却开始按米拉录音的节奏震动。身后的船笛提醒你：最低潮只剩很短一段时间。', 'You do not wait for the ferry to dock. The Foldtide Sail catches a crosswind and drops you onto the dripping old road. The compass needle stills, but tide-copper in the joints begins pulsing to Mira’s recorded cadence. A ferry horn behind you warns that lowest tide will not last.'),
+        successChoices: [s('贴近潮铜，听清它保存的回声', 'Listen closely to the echo held in the tide-copper'), s('沿旧路赶往废弃海关阶梯', 'Follow the old road toward the abandoned customs stair'), s('回头回应翻船处传来的口哨', 'Answer the whistle from the overturned skiff')],
+      },
+      {
+        id: 'opening-rescue', when: { factUnset: ['opening-path'] },
+        action: { exact: [s('先去把翻船的人从回流里拉上来', 'Pull the person clear of the backflow first')] },
+        effects: [
+          { type: 'fact', key: 'opening-path', value: 'rescue' }, { type: 'fact', key: 'rescued-nilo', value: true },
+          { type: 'stat', id: 'city-bond', delta: 8 }, { type: 'character', id: 'nilo' },
+          { type: 'clock', value: s('归潮日 · 05:50 · 回流转向', 'Homecoming · 05:50 · Backflow turning') },
+          { type: 'objective', value: s('借尼洛的屋顶水路追上正在消失的旧路', 'Use Nilo’s rooftop route to catch the vanishing old road') },
+        ],
+        successText: s('你先把帆索抛向翻船处。抓住缆绳的人踩着船沿翻上甲板，还顺手解开了缠住你脚踝的绳。他叫尼洛，是屋顶码头的摆渡人；他认出罗盘后没有追问，只指向一条能从高处截住旧路的绳桥。你救下的不是一条支线，而是另一条进城路线。', 'You throw the sail line toward the overturned skiff first. The person on the rope vaults over the gunwale and frees the line around your ankle in the same motion. His name is Nilo, a Rooftop Quay ferryman. He recognizes the compass, asks no questions, and points out a rope bridge that can intercept the old road from above. You did not pause the main trail—you found another way into it.'),
+        successChoices: [s('跟尼洛走屋顶水路', 'Take Nilo’s rooftop route'), s('先问他为什么认得逆潮罗盘', 'Ask why he recognizes the Countertide Compass'), s('请他稳住翻船，自己追旧路', 'Have him secure the skiff while you chase the old road')],
+      },
+      {
+        id: 'opening-overview', when: { factUnset: ['opening-path'] },
+        action: { exact: [s('登上顶层，看清旧路与整座城市的潮向', 'Climb to the upper deck and read the whole tide')] },
+        effects: [
+          { type: 'fact', key: 'opening-path', value: 'overview' }, { type: 'fact', key: 'city-tide-pattern-seen', value: true },
+          { type: 'stat', id: 'city-bond', delta: 4 },
+          { type: 'clock', value: s('归潮日 · 05:48 · 潮线显形', 'Homecoming · 05:48 · Tide lines visible') },
+          { type: 'objective', value: s('利用观察到的三条潮线选择进城切口', 'Choose an entry using the three tide lines you identified') },
+        ],
+        successText: s('你爬上渡船顶层，没有立刻追任何一个目标。高度把混乱整理成了三条清楚的潮线：旧石路通往废弃海关，翻船者身后的绳桥连着屋顶码头，而灯塔最后一束光恰好扫过中央潮门的铜脊。罗盘不是只指一条路；它在回应三处尚未兑现的承诺。', 'You climb to the upper deck instead of chasing the first emergency. Height organizes the harbor into three readable tide lines: the old road reaches the abandoned customs stair, the rope bridge behind the capsized ferryman climbs to Rooftop Quay, and the lighthouse’s last beam catches a copper ridge above the central gate. The compass is not pointing to one road. It is answering three unfinished promises.'),
+        successChoices: [s('沿旧石路去废弃海关', 'Take the old road to the abandoned customs stair'), s('借绳桥进入屋顶码头', 'Use the rope bridge into Rooftop Quay'), s('继续观察灯塔与中央潮门的光线', 'Keep watching the line between lighthouse and central gate')],
+      },
+    ],
     statDefinitions: [
       { id: 'vitality', label: s('体力', 'Vitality'), min: 0, max: 100, initial: 72, inverse: true, display: 'bar', warningAt: 25, dangerAt: 0, maxDelta: 24 },
       { id: 'tide-breath', label: s('潮息', 'Tide Breath'), min: 0, max: 100, initial: 40, inverse: true, display: 'bar', warningAt: 20, dangerAt: 0, maxDelta: 25 },
@@ -124,6 +163,11 @@ function build(locale: Locale): StoryCartridge {
       skills: [{ id: 'tide-engineering', label: s('潮门机械', 'Tide engineering'), value: 4 }, { id: 'resolve', label: s('决断', 'Resolve'), value: 3 }],
       detail: s('录音里的声音清醒而急迫。她失踪前穿着旧潮门工作外套，随身带着现在回到你手里的逆潮罗盘。', 'The voice in the recording is alert and urgent. When she vanished, she wore an old gate-worker coat and carried the compass now in your hand.'),
       lore: s('无钟之夜，她主动返回零号潮门，并与另外四十六人一起从官方记录中消失。她不是等待被动营救的人。', 'On the Bell-less Night, she deliberately returned to Gate Zero and disappeared from official records with forty-six others. She is not a passive prisoner.'),
+    }, {
+      id: 'nilo', name: s('尼洛', 'Nilo'), role: s('屋顶码头摆渡人', 'Rooftop Quay ferryman'), vitality: 84, stress: 28, hiddenUntilIntroduced: true,
+      skills: [{ id: 'roof-route', label: s('屋顶水路', 'Rooftop routes'), value: 4 }, { id: 'ropework', label: s('绳索', 'Ropework'), value: 3 }],
+      detail: s('从翻船边的缆绳上翻回甲板，动作熟练，认得逆潮罗盘。', 'He vaults from the capsized skiff’s line with practiced ease and recognizes the Countertide Compass.'),
+      lore: s('他替屋顶居民摆渡货物与消息，知道不同时段哪些高处路线仍然连通。', 'He ferries goods and news for rooftop residents and knows which elevated routes remain connected at each tide.'),
     }],
     initialMap: [
       { id: 'return-ferry', label: s('返乡渡船', 'Return Ferry'), current: true, detail: s('驶入外港的旧式双层渡船，甲板、船舷和顶层观察台都可活动。', 'An old two-deck ferry entering the outer harbor, with accessible deck, rail and observation roof.'), lore: s('居民按潮位而非钟点安排渡船；这班清晨船在最低潮前靠岸。', 'Residents schedule ferries by tide rather than clock; this dawn boat docks before the lowest water.'), facts: zh ? ['罗盘指向左舷下方', '渡船尚未靠岸', '无名旧路正在显露'] : ['The compass points below the port rail', 'The ferry has not docked', 'An unmarked road is emerging'] },

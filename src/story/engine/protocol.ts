@@ -2,7 +2,7 @@ import { t } from '../i18n'
 import type { EntityMetric, Locale, ParsedCommand, ParsedScene, SceneImageSubject, SkillDefinition, StoryBlock } from '../types'
 
 const commandNames = new Set([
-  'choices', 'widget', 'skill_check', 'state', 'clock', 'map_update', 'inventory',
+  'choices', 'widget', 'skill_check', 'state', 'clock', 'fact', 'map_update', 'inventory',
   'reputation', 'character_update', 'party_change', 'encounter', 'session_end',
 ])
 
@@ -83,6 +83,13 @@ function optionalNumber(value: string | undefined): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
+function factValue(value: string): string | number | boolean {
+  if (value === 'true') return true
+  if (value === 'false') return false
+  const parsed = Number(value)
+  return value.trim() !== '' && Number.isFinite(parsed) ? parsed : value
+}
+
 function parseSkills(value: string | undefined): SkillDefinition[] | undefined {
   const skills = parseList(value)?.map((entry, index) => {
     const divider = entry.search(/[:=]/)
@@ -110,6 +117,7 @@ function parseCommand(name: string, source: string, locale: Locale): ParsedComma
     }
     case 'state': return { type: 'state', value: data.value ?? source.replace(/^\s*state\s*:/i, '').trim() }
     case 'clock': return { type: 'clock', value: data.value ?? source.replace(/^\s*clock\s*:/i, '').trim() }
+    case 'fact': return data.key ? { type: 'fact', key: data.key, value: factValue(data.value ?? 'true') } : null
     case 'map_update': return data.new_location || data.location ? {
       type: 'map_update', location: data.new_location ?? data.location, connectedTo: data.connected_to,
       detail: data.detail, lore: data.lore, facts: parseList(data.facts),

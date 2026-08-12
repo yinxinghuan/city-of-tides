@@ -9,15 +9,17 @@ import { applyParsedScene, createImageBlock, createInitialSave, createRecoveryCh
 import { parseStoryProtocol } from './engine/protocol'
 import { shouldUsePlayerImageReference, upgradePendingSceneImagePrompts } from './engine/imageDirector'
 import { buildDangerDirective, normalizeDangerState } from './engine/dangerDirector'
+import { resolveDomainAction } from './engine/domainRules'
 import { t } from './i18n'
 import { ITEM_IMAGE_STYLE_VERSION, type AdapterProgress, type InventoryItem, type Locale, type StoryArchive, type StoryCartridge, type StoryMode, type StorySave } from './types'
 
-type LegacyStorySave = Omit<StorySave, 'version' | 'locale' | 'characters' | 'partyMemberIds' | 'danger'> & {
-  version?: 1 | 2 | 3 | 4 | 5 | 6
+type LegacyStorySave = Omit<StorySave, 'version' | 'locale' | 'characters' | 'partyMemberIds' | 'danger' | 'facts'> & {
+  version?: 1 | 2 | 3 | 4 | 5 | 6 | 7
   locale?: Locale
   characters?: StorySave['characters']
   partyMemberIds?: StorySave['partyMemberIds']
   danger?: Partial<StorySave['danger']>
+  facts?: StorySave['facts']
   imageUrl?: string
   imageStatus?: 'idle' | 'queued' | 'generating' | 'ready' | 'failed'
   imagePrompt?: string
@@ -125,7 +127,8 @@ function normalizeSave(candidate: LegacyStorySave | null | undefined, cartridge:
   })
   const characterState = normalizeCharacterState(repaired, cartridge)
   const normalized = {
-    ...repaired, ...characterState, version: 6, locale: repaired.locale ?? cartridge.locale,
+    ...repaired, ...characterState, version: 7, locale: repaired.locale ?? cartridge.locale,
+    facts: { ...(cartridge.initialFacts ?? {}), ...(repaired.facts ?? {}) },
     remoteChatId: incomingChatId || repaired.remoteChatId, blocks, inventory, map,
     danger: normalizeDangerState(repaired.danger),
   } as StorySave
@@ -259,10 +262,13 @@ export function useStoryEngine(cartridge: StoryCartridge, initialMode: StoryMode
     try {
       const adapter = mode === 'remote' ? remoteAdapter : mode === 'aigram' ? aigramAdapter : mockAdapter
       const base = localizeKnownState(saveRef.current, cartridge, activeCartridge)
-      const dangerDirective = buildDangerDirective(base, activeCartridge, normalizedAction)
-      const result = await adapter.send(normalizedAction, { cartridge: activeCartridge, save: base, actionId: normalizedAction, locale: actionLocale, dangerDirective }, setProgress)
+      const domainResolution = resolveDomainAction(base, activeCartridge, normalizedAction)
+      const dangerDirective = domainResolution ? undefined : buildDangerDirective(base, activeCartridge, normalizedAction)
+      const result = domainResolution
+        ? { content: domainResolution.text }
+        : await adapter.send(normalizedAction, { cartridge: activeCartridge, save: base, actionId: normalizedAction, locale: actionLocale, dangerDirective }, setProgress)
       const parsed = parseStoryProtocol(result.content, actionLocale)
-      commit((current) => applyParsedScene(localizeKnownState(current, cartridge, activeCartridge), parsed, activeCartridge, normalizedAction, result.imagePrompt, result.imageSubject, dangerDirective))
+      commit((current) => applyParsedScene(localizeKnownState(current, cartridge, activeCartridge), parsed, activeCartridge, normalizedAction, result.imagePrompt, result.imageSubject, dangerDirective, domainResolution))
       setPendingAction('')
       setProgress(null)
     } catch (cause) {

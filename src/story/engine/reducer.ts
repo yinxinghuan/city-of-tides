@@ -1,4 +1,4 @@
-import { SCENE_IMAGE_PROMPT_VERSION, type CharacterDefinition, type DangerDirective, type ImageBlockStatus, type ParsedCommand, type ParsedScene, type SceneImageSubject, type StoryBlock, type StoryCartridge, type StoryCharacter, type StorySave } from '../types'
+import { SCENE_IMAGE_PROMPT_VERSION, type CharacterDefinition, type DangerDirective, type DomainActionResolution, type ImageBlockStatus, type ParsedCommand, type ParsedScene, type SceneImageSubject, type StoryBlock, type StoryCartridge, type StoryCharacter, type StorySave } from '../types'
 import { t } from '../i18n'
 import { chooseSceneImage } from './imageDirector'
 import { createInitialDangerState, normalizeDangerState, settleDangerTurn } from './dangerDirector'
@@ -10,13 +10,13 @@ function clamp(value: number, min: number, max: number): number {
 export function createInitialSave(cartridge: StoryCartridge, remoteChatId?: string): StorySave {
   const initialPartyMemberIds = cartridge.initialPartyMemberIds ?? cartridge.characters.filter((character) => character.initialStatus === 'companion').map((character) => character.id)
   return {
-    version: 6, cartridgeId: cartridge.id, locale: cartridge.locale, remoteChatId, entered: false, scene: 0,
+    version: 7, cartridgeId: cartridge.id, locale: cartridge.locale, remoteChatId, entered: false, scene: 0,
     location: cartridge.opening.location, time: cartridge.opening.time, objective: cartridge.opening.objective,
-    stats: Object.fromEntries(cartridge.statDefinitions.map((stat) => [stat.id, stat.initial])),
+    stats: Object.fromEntries(cartridge.statDefinitions.map((stat) => [stat.id, stat.initial])), facts: { ...(cartridge.initialFacts ?? {}) },
     blocks: [...cartridge.opening.blocks, createImageBlock('image-0', cartridge.opening.location, cartridge.opening.imagePrompt, 'idle')],
     choices: cartridge.opening.choices, map: cartridge.initialMap.map((node) => ({ ...node, visited: node.visited ?? Boolean(node.current), facts: node.facts ? [...node.facts] : undefined })),
     inventory: cartridge.initialInventory.map((item) => ({ ...item, metrics: item.metrics?.map((metric) => ({ ...metric })), imageStatus: item.imageUrl ? 'ready' : 'idle' })),
-    characters: cartridge.characters.map((character) => {
+    characters: cartridge.characters.filter((character) => !character.hiddenUntilIntroduced).map((character) => {
       const state = characterFromDefinition(character)
       if (initialPartyMemberIds.includes(state.id)) state.status = 'companion'
       return state
@@ -82,7 +82,12 @@ type LegacyCharacterState = Pick<StorySave, 'blocks' | 'relationships'> & Partia
 
 export function normalizeCharacterState(candidate: LegacyCharacterState, cartridge: StoryCartridge): Pick<StorySave, 'characters' | 'partyMemberIds' | 'relationships'> {
   const staticById = new Map(cartridge.characters.map((character) => [character.id, character]))
-  const inputCharacters = Array.isArray(candidate.characters) ? candidate.characters : []
+  const visibleNarrative = candidate.blocks.map((block) => `${block.speaker ?? ''} ${block.text}`).join('\n')
+  const savedParty = new Set(Array.isArray(candidate.partyMemberIds) ? candidate.partyMemberIds : [])
+  const inputCharacters = (Array.isArray(candidate.characters) ? candidate.characters : []).filter((character) => {
+    const definition = staticById.get(character.id)
+    return !definition?.hiddenUntilIntroduced || savedParty.has(character.id) || character.updatedAtScene > 0 || visibleNarrative.includes(character.name)
+  })
   const characters: StoryCharacter[] = inputCharacters.map((character) => {
     const definition = staticById.get(character.id)
     return {
@@ -98,7 +103,7 @@ export function normalizeCharacterState(candidate: LegacyCharacterState, cartrid
     }
   })
   cartridge.characters.forEach((definition) => {
-    if (!characters.some((character) => character.id === definition.id)) characters.push(characterFromDefinition(definition))
+    if (!definition.hiddenUntilIntroduced && !characters.some((character) => character.id === definition.id)) characters.push(characterFromDefinition(definition))
   })
   const findOrCreate = (name: string, id?: string): StoryCharacter => {
     const found = (id ? characters.find((character) => character.id === id) : undefined)
@@ -300,6 +305,7 @@ export function applyParsedScene(
   imagePrompt?: string,
   imageSubject?: SceneImageSubject,
   dangerDirective?: DangerDirective,
+  domainResolution?: DomainActionResolution,
 ): StorySave {
   const next: StorySave = {
     ...save, locale: cartridge.locale, scene: save.scene + 1,
@@ -309,13 +315,14 @@ export function applyParsedScene(
     characters: save.characters.map((character) => ({ ...character, skills: character.skills.map((skill) => ({ ...skill })) })),
     partyMemberIds: [...save.partyMemberIds],
     stats: { ...save.stats },
+    facts: { ...save.facts },
     danger: normalizeDangerState(save.danger),
     sessionEnded: false, lastActionId: actionId,
   }
   const effects: StoryBlock[] = []
   let dangerCheckAdded = false
 
-  const commands = [...parsed.commands, ...inferInventoryCommands(parsed, cartridge)]
+  const commands = domainResolution ? [] : [...parsed.commands, ...inferInventoryCommands(parsed, cartridge)]
   commands.forEach((command, index) => {
     const effectId = `effect-${next.scene}-${index}`
     if (command.type === 'choices') {
@@ -345,6 +352,7 @@ export function applyParsedScene(
     }
     if (command.type === 'state' && command.value) next.objective = command.value
     if (command.type === 'clock' && command.value) next.time = command.value
+    if (command.type === 'fact') next.facts[command.key] = command.value
     if (command.type === 'map_update') {
       next.map.forEach((node) => { node.current = false })
       const existing = next.map.find((node) => node.label === command.location || node.id === command.location)
@@ -415,6 +423,37 @@ export function applyParsedScene(
     }
   })
 
+  if (domainResolution?.kind === 'accepted') {
+    domainResolution.effects.forEach((effect, index) => {
+      const effectId = `domain-${next.scene}-${index}`
+      if (effect.type === 'fact') next.facts[effect.key] = effect.value
+      if (effect.type === 'stat') {
+        const definition = cartridge.statDefinitions.find((stat) => stat.id === effect.id)
+        if (!definition) return
+        const current = next.stats[effect.id] ?? definition.initial
+        next.stats[effect.id] = clamp(current + effect.delta, definition.min, definition.max)
+        effects.push(changeBlock(effectId, `${definition.label} ${effect.delta > 0 ? '+' : ''}${effect.delta}`, { stat: effect.id, delta: effect.delta }))
+      }
+      if (effect.type === 'clock') next.time = effect.value
+      if (effect.type === 'objective') next.objective = effect.value
+      if (effect.type === 'map') {
+        next.map.forEach((node) => { node.current = false })
+        const destination = next.map.find((node) => node.id === effect.location || node.label === effect.location)
+        if (destination) { destination.current = true; destination.visited = true; next.location = destination.label }
+      }
+      if (effect.type === 'character') {
+        const definition = cartridge.characters.find((character) => character.id === effect.id)
+        if (!definition) return
+        let character = next.characters.find((entry) => entry.id === definition.id)
+        if (!character) { character = characterFromDefinition(definition); next.characters.push(character) }
+        character.status = effect.status ?? 'known'
+        character.updatedAtScene = next.scene
+        if (character.status === 'companion' && !next.partyMemberIds.includes(character.id)) next.partyMemberIds.push(character.id)
+      }
+    })
+  }
+  if (domainResolution) next.choices = domainResolution.choices.map((label, index) => ({ id: `${next.scene}-domain-${index}`, label }))
+
   if (dangerDirective?.phase === 'resolution' && dangerDirective.check && !dangerCheckAdded) {
     const check = dangerDirective.check
     const succeeded = check.outcome === 'critical-success' || check.outcome === 'success' || check.outcome === 'costly-success'
@@ -423,7 +462,7 @@ export function applyParsedScene(
       data: { dc: check.dc, roll: check.roll, modifier: check.modifier, total: check.total, outcome: check.outcome },
     })
   }
-  effects.push(...settleDangerTurn(save, next, parsed, cartridge, dangerDirective))
+  if (!domainResolution) effects.push(...settleDangerTurn(save, next, parsed, cartridge, dangerDirective))
 
   // Ordinary scenes must remain playable even when an AI response omits or
   // truncates its machine-readable choices. A real checkpoint may still use

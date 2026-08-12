@@ -9,7 +9,7 @@ function equal(actual: unknown, expected: unknown, message: string) { if (actual
 const cartridge = listCartridges('en')[0]
 ok(cartridge, 'standalone cartridge is registered')
 const initial = createInitialSave(cartridge)
-equal(initial.version, 6, 'StorySave v6 is active')
+equal(initial.version, 7, 'StorySave v7 is active')
 const baselineParty = initial.partyMemberIds.length
 
 const first = applyParsedScene(initial, parseStoryProtocol(`Ari becomes a recurring guide and joins the existing party.

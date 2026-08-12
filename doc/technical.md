@@ -39,6 +39,10 @@ _qa/
 
 ## 3. 核心模块
 
+`StorySave.version = 7` 新增 `facts`。模型可用 `[fact]` 持久化发现、承诺和路线选择，`worldContext.ts` 每轮把权威事实回送给续写模型；已有地点、人物、关系和事实仍只能由 reducer 提交。
+
+`domainRules.ts` 在危险调度与 adapter 之前处理三项返乡首选：旧路、救尼洛、登高观察。命中规则时完全跳过模型调用，本地文本、事实、数值、时钟、地图、目标、人物登场与三项后续选择原子提交；重复动作只给拒绝结果，不重复领取收益。尼洛使用 `hiddenUntilIntroduced`，只有“救人”正文成立的同一回合才进入人物存档。
+
 ### 默认入口与响应式布局
 
 - `src/main.tsx` 静态导入 `CityOfTidesShell` 和 `city-of-tides.less`，保证 MiniAPP 与 UUID 正式主站默认打开共享世界，而不是个人故事 `StoryShell`。Pages 只验证同 commit 静态构建，不作为共享 API 运行时。
@@ -83,6 +87,8 @@ _qa/
 - 普通行动即时提交；只有留言和回应展开 textarea。所有滚动容器内交互使用 `onClick`。
 
 ## 4. 扩展点
+
+- 新增一次性潮路、救援、身份登场或互斥承诺：编辑 cartridge 的 `initialFacts / domainRules`，并同步 `_qa/domain-rules.ts`；不要只在 demo 文本或 prompt 里写数值结果。
 
 - 改区域、动作、工程、锚点文案：编辑 `src/shared-world/i18n.ts`。
 - 调数值、TTL、工程门槛：同步修改 `src/shared-world/engine.ts` 与 `worker/index.js`，并补 reducer/后端测试。
