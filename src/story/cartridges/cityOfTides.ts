@@ -12,6 +12,7 @@ function build(locale: Locale): StoryCartridge {
     locale,
     coverImage,
     entryImage,
+    transitionAnchor: s('逆潮罗盘与随身潮汐航图', 'the Countertide Compass and your portable tide chart'),
     copy: {
       title: s('潮痕之城', 'CITY OF TIDES'),
       subtitle: s('有些归途，要等海水退去才会出现', 'Some roads home appear only when the sea withdraws'),

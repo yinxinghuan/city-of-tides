@@ -186,6 +186,7 @@ export interface StoryCartridge {
   itemImageDirection?: string
   sceneImageDirection?: string
   sceneImageAvoid?: string
+  transitionAnchor?: string
   imageDirector?: StoryImageDirector
   director?: StoryDirector
   dangerDirector?: StoryDangerDirector
@@ -204,7 +205,7 @@ export interface StoryCartridge {
 export interface DemoTurn { match: string[]; content: string; imagePrompt?: string; imageSubject?: SceneImageSubject }
 
 export interface StorySave {
-  version: 7
+  version: 8
   cartridgeId: CartridgeId
   locale: Locale
   remoteChatId?: string
@@ -213,6 +214,7 @@ export interface StorySave {
   location: string
   time: string
   objective: string
+  decisionContext: string
   stats: Record<string, number>
   facts: Record<string, StoryFactValue>
   blocks: StoryBlock[]

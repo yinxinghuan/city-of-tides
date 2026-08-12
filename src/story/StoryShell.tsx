@@ -186,6 +186,7 @@ function Composer({ cartridge, engine, onAct }: { cartridge: StoryCartridge; eng
   const closedCheckpoint = engine.save.sessionEnded && !hasStoryChoices
   const choices = hasStoryChoices ? engine.save.choices : closedCheckpoint ? [{ id: `continue-${engine.save.scene}`, label: cartridge.copy.continue }] : []
   return <section className="st-composer" aria-label={t(cartridge.locale, 'reply')}>
+    {engine.save.scene > 0 && choices.length > 0 && engine.save.decisionContext && <div className="st-decision-context"><small>{t(cartridge.locale, 'currentSituation')}</small><p>{engine.save.decisionContext}</p></div>}
     <div className="st-quick-replies" ref={repliesRef}>
       {choices.map((choice, index) => {
         const visualUnits = Array.from(choice.label).reduce((total, character) => total + (/[^\u0000-\u00ff]/.test(character) ? 2 : 1), 0)

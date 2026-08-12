@@ -104,3 +104,9 @@ _qa/
 - 平台尚未向自定义 Worker 暴露可验证的签名身份。生产后端当前以受限 public beta 运行，依靠幂等、数量、TTL、限流和多人举报降低风险，但不等同于密码学验签。
 - 平台提供签名 token/header 或验证端点后，应先在 Worker 验证身份，再关闭 `PUBLIC_BETA`。
 - 当前季节结算由访问触发，不使用定时 Alarm；无人访问时会在下一次访问按原边界时间补结算。
+
+## 连续性守门（2026-08-13）
+
+- Cartridge 通过 `transitionAnchor` 声明“逆潮罗盘与随身潮汐航图”；`src/story/engine/continuity.ts` 生成地点桥接、压缩 `decisionContext` 并核验选项名词是否已有可见依据。
+- `reducer.ts` 在 `map_update` 与受管辖地图事务提交前插入桥接，并在选择落入 UI 前执行 grounded-choice 检查；旧存档升级到 StorySave v8 时从现有目标补齐 `decisionContext`。
+- `_qa/continuity-gate.ts` 以未登场的“国王 / 快递员 / 玻璃王国”作为反例，同时断言中转锚点先于目的地正文。

@@ -160,6 +160,9 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline:2px s
 .st-new-content { position:absolute; z-index:28; right:14px; bottom:116px; min-height:40px; padding:0 12px; border:1px solid color-mix(in srgb,var(--st-paper) 24%,transparent); background:var(--st-accent); color:var(--st-paper); display:flex; align-items:center; gap:6px; font-size:10px; box-shadow:0 6px 18px rgba(0,0,0,.2); }.st-new-content svg{width:15px;transform:rotate(90deg)}
 
 .st-composer { z-index:20; background:var(--st-surface); color:var(--st-paper); padding:8px 0 max(9px,env(safe-area-inset-bottom)); border-top:1px solid color-mix(in srgb,var(--st-paper) 13%,transparent); }
+.st-decision-context { max-width:680px; margin:0 auto 7px; padding:0 14px; display:flex; gap:8px; align-items:baseline; }
+.st-decision-context small { flex:0 0 auto; color:var(--st-accent); font-size:10px; letter-spacing:.08em; text-transform:uppercase; }
+.st-decision-context p { margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:color-mix(in srgb,var(--st-paper) 76%,transparent); font-size:12px; }
 .st-quick-replies { display:flex; gap:7px; overflow-x:auto; padding:0 max(12px,calc((100% - 680px)/2)) 7px; scrollbar-width:none; scroll-snap-type:x proximity; touch-action:pan-x; }
 .st-quick-replies::-webkit-scrollbar { display:none; }
 .st-quick-replies button { flex:0 0 auto; width:min(var(--st-choice-width,220px),82vw,390px); min-width:132px; min-height:46px; scroll-snap-align:start; border:1px solid color-mix(in srgb,var(--st-paper) 22%,transparent); background:color-mix(in srgb,var(--st-paper) 7%,transparent); color:var(--st-paper); display:grid; grid-template-columns:20px minmax(0,1fr) 14px; align-items:center; gap:3px; padding:7px 8px; text-align:left; cursor:pointer; }

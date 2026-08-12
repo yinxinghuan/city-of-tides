@@ -2,6 +2,7 @@ import { SCENE_IMAGE_PROMPT_VERSION, type CharacterDefinition, type DangerDirect
 import { t } from '../i18n'
 import { chooseSceneImage } from './imageDirector'
 import { createInitialDangerState, normalizeDangerState, settleDangerTurn } from './dangerDirector'
+import { choicesAreGrounded, createTransitionBlock, shortDecisionContext } from './continuity'
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
@@ -10,8 +11,9 @@ function clamp(value: number, min: number, max: number): number {
 export function createInitialSave(cartridge: StoryCartridge, remoteChatId?: string): StorySave {
   const initialPartyMemberIds = cartridge.initialPartyMemberIds ?? cartridge.characters.filter((character) => character.initialStatus === 'companion').map((character) => character.id)
   return {
-    version: 7, cartridgeId: cartridge.id, locale: cartridge.locale, remoteChatId, entered: false, scene: 0,
+    version: 8, cartridgeId: cartridge.id, locale: cartridge.locale, remoteChatId, entered: false, scene: 0,
     location: cartridge.opening.location, time: cartridge.opening.time, objective: cartridge.opening.objective,
+    decisionContext: cartridge.opening.objective,
     stats: Object.fromEntries(cartridge.statDefinitions.map((stat) => [stat.id, stat.initial])), facts: { ...(cartridge.initialFacts ?? {}) },
     blocks: [...cartridge.opening.blocks, createImageBlock('image-0', cartridge.opening.location, cartridge.opening.imagePrompt, 'idle')],
     choices: cartridge.opening.choices, map: cartridge.initialMap.map((node) => ({ ...node, visited: node.visited ?? Boolean(node.current), facts: node.facts ? [...node.facts] : undefined })),
@@ -307,9 +309,15 @@ export function applyParsedScene(
   dangerDirective?: DangerDirective,
   domainResolution?: DomainActionResolution,
 ): StorySave {
+  const commandDestination = parsed.commands.find((command) => command.type === 'map_update')
+  const domainMap = domainResolution?.kind === 'accepted' ? domainResolution.effects.find((effect) => effect.type === 'map') : undefined
+  const domainDestination = domainMap?.type === 'map'
+    ? (save.map.find((node) => node.id === domainMap.location || node.label === domainMap.location)?.label ?? domainMap.location)
+    : undefined
+  const transition = createTransitionBlock(save, commandDestination?.type === 'map_update' ? commandDestination.location : domainDestination, cartridge)
   const next: StorySave = {
     ...save, locale: cartridge.locale, scene: save.scene + 1,
-    blocks: [...save.blocks, { id: `action-${save.scene + 1}`, kind: 'event', text: actionId }, ...parsed.blocks],
+    blocks: [...save.blocks, { id: `action-${save.scene + 1}`, kind: 'event', text: actionId }, ...(transition ? [transition] : []), ...parsed.blocks],
     choices: [], relationships: [...save.relationships],
     map: save.map.map((node) => ({ ...node })), inventory: save.inventory.map((item) => ({ ...item })),
     characters: save.characters.map((character) => ({ ...character, skills: character.skills.map((skill) => ({ ...skill })) })),
@@ -319,6 +327,10 @@ export function applyParsedScene(
     danger: normalizeDangerState(save.danger),
     sessionEnded: false, lastActionId: actionId,
   }
+  const visibleTurnText = parsed.blocks
+    .filter((block) => block.kind === 'narration' || block.kind === 'dialogue')
+    .map((block) => block.text.trim()).filter(Boolean).join(' ')
+  if (visibleTurnText) next.decisionContext = shortDecisionContext(visibleTurnText, cartridge.locale)
   const effects: StoryBlock[] = []
   let dangerCheckAdded = false
 
@@ -467,6 +479,7 @@ export function applyParsedScene(
   // Ordinary scenes must remain playable even when an AI response omits or
   // truncates its machine-readable choices. A real checkpoint may still use
   // the dedicated resume action supplied by the Composer.
+  if (!next.sessionEnded && next.choices.length >= 2 && !choicesAreGrounded(next.choices, { ...next, choices: save.choices, blocks: [...next.blocks, ...effects] }, cartridge)) next.choices = []
   if (!next.sessionEnded && next.choices.length < 2) next.choices = createRecoveryChoices(next, cartridge)
 
   const image = chooseSceneImage(save, next, parsed, cartridge, imagePrompt, imageSubject)
