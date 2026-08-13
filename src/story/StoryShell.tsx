@@ -60,10 +60,45 @@ function statPresentation(stat: StatDefinition, value: number) {
   }
 }
 
+function HeaderStat({ stat, value, onOpen }: { stat: StatDefinition; value: number; onOpen: () => void }) {
+  const previousValue = useRef(value)
+  const [delta, setDelta] = useState(0)
+  useEffect(() => {
+    const change = value - previousValue.current
+    previousValue.current = value
+    if (!change) return
+    setDelta(change)
+    const timer = window.setTimeout(() => setDelta(0), 860)
+    return () => window.clearTimeout(timer)
+  }, [value])
+  const presentation = statPresentation(stat, value)
+  const direction = delta === 0 ? '' : (stat.inverse ? delta > 0 : delta < 0) ? 'gain' : 'loss'
+  return <button type="button" className={`st-chat-stat st-chat-stat--${stat.display ?? 'number'} is-${presentation.tone}${delta ? ` has-delta is-delta-${direction}` : ''}`} onClick={onOpen} aria-label={`${stat.label} ${value}`}>
+    <div className="st-chat-stat__reading"><span>{stat.label}</span><strong>{value}{stat.display === 'number' && <small> / {stat.max}</small>}</strong></div>
+    {stat.display === 'bar' && <div className="st-chat-stat__track" role="progressbar" aria-label={stat.label} aria-valuemin={stat.min} aria-valuemax={stat.max} aria-valuenow={value}><i style={{ width: `${presentation.percent}%` }} /><b style={{ left: `${presentation.thresholdPercent}%` }} aria-hidden="true" /></div>}
+    {delta !== 0 && <output className="st-chat-stat__delta" aria-live="polite">{delta > 0 ? '+' : ''}{delta}</output>}
+    <Icon name="arrow" className="st-chat-stat__open" />
+  </button>
+}
+
 function checkPassed(block: StoryBlock): boolean {
   const outcome = String(block.data?.outcome ?? '')
   if (outcome) return outcome === 'critical-success' || outcome === 'success' || outcome === 'costly-success'
   return Number(block.data?.total) >= Number(block.data?.dc)
+}
+
+function StatChangeResult({ block, cartridge }: { block: StoryBlock; cartridge: StoryCartridge }) {
+  const statId = String(block.data?.stat ?? '')
+  const stat = cartridge.statDefinitions.find((definition) => definition.id === statId)
+  const delta = Number(block.data?.delta)
+  if (!stat || !Number.isFinite(delta)) return <div className="st-result st-result--change" data-block-id={block.id}><i /><span>{block.text}</span></div>
+  const direction = delta === 0 ? 'steady' : (stat.inverse ? delta > 0 : delta < 0) ? 'gain' : 'loss'
+  const range = Math.max(1, stat.maxDelta ?? stat.max - stat.min)
+  const strength = `${Math.max(18, Math.min(100, Math.round(Math.abs(delta) / range * 100)))}%`
+  return <div className={`st-result st-stat-change is-${direction}`} data-block-id={block.id} data-change-direction={direction} style={{ '--st-change-strength': strength } as React.CSSProperties}>
+    <small>{t(cartridge.locale, 'valueChanged')}</small><span>{stat.label}</span><strong>{delta > 0 ? '+' : ''}{delta}</strong>
+    <div className="st-stat-change__trace" aria-hidden="true"><i /></div>
+  </div>
 }
 
 function PlayerAvatar({ profile, locale, large = false }: { profile: PlayerProfile; locale: Locale; large?: boolean }) {
@@ -122,12 +157,7 @@ function ConversationHeader({ cartridge, engine, audio, openWorld, textSize, set
     <div className="st-chat-stats" aria-label={t(cartridge.locale, 'stats')}>
       {cartridge.statDefinitions.map((stat) => {
         const value = engine.save.stats[stat.id] ?? stat.initial
-        const presentation = statPresentation(stat, value)
-        return <button type="button" className={`st-chat-stat st-chat-stat--${stat.display ?? 'number'} is-${presentation.tone}`} onClick={() => openWorld('party', { type: 'player', statId: stat.id })} aria-label={t(cartridge.locale, 'openStatDetails', { name: stat.label })} key={stat.id}>
-          <div className="st-chat-stat__reading"><span>{stat.label}</span><strong>{value}{stat.display === 'number' && <small> / {stat.max}</small>}</strong></div>
-          {stat.display === 'bar' && <div className="st-chat-stat__track" role="progressbar" aria-label={stat.label} aria-valuemin={stat.min} aria-valuemax={stat.max} aria-valuenow={value}><i style={{ width: `${presentation.percent}%` }} /><b style={{ left: `${presentation.thresholdPercent}%` }} aria-hidden="true" /></div>}
-          <Icon name="arrow" className="st-chat-stat__open" />
-        </button>
+        return <HeaderStat stat={stat} value={value} onOpen={() => openWorld('party', { type: 'player', statId: stat.id })} key={stat.id} />
       })}
     </div>
   </header>
@@ -152,7 +182,7 @@ function StoryBlockView({ block, cartridge, retryImage, player }: { block: Story
   if (block.kind === 'image') return <InlineSceneImage block={block} cartridge={cartridge} retry={retryImage} />
   if (block.kind === 'dialogue') return <div className="st-message st-message--character" data-block-id={block.id}><div className="st-message__avatar">{block.speaker?.slice(0, 1)}</div><div className="st-message__body"><header><span>{block.speaker}</span><small>{block.tone}</small></header><p>{block.text}</p></div></div>
   if (block.kind === 'check') return <div className="st-result st-result--check" data-block-id={block.id}><div><span>{checkPassed(block) ? 'PASS' : 'MISS'}</span><p>{block.text}</p></div><section><b>{block.data?.roll}</b><i>+</i><b>{block.data?.modifier}</b><i>=</i><strong>{block.data?.total}</strong><small>DC {block.data?.dc}</small></section></div>
-  if (block.kind === 'change') return <div className="st-result st-result--change" data-block-id={block.id}><i /><span>{block.text}</span></div>
+  if (block.kind === 'change') return <StatChangeResult block={block} cartridge={cartridge} />
   if (block.kind === 'summary') return <section className="st-result st-result--summary" data-block-id={block.id}><small>{t(cartridge.locale, 'summary')}</small><h2>{block.text}</h2><p>{t(cartridge.locale, 'notEnding')}</p></section>
   if (block.kind === 'event' && block.id.startsWith('action-')) return <div className="st-message st-message--player" data-block-id={block.id}><div className="st-message__body"><small>{t(cartridge.locale, 'yourAction')}</small><p>{block.text}</p></div><PlayerAvatar profile={player} locale={cartridge.locale} /></div>
   if (block.kind === 'event') return <div className={`st-system-line${block.data?.dangerPhase ? ' st-system-line--danger' : ''}`} data-block-id={block.id} data-danger-phase={block.data?.dangerPhase}><span>{block.text}</span></div>

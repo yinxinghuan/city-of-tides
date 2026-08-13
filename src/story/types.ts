@@ -205,7 +205,7 @@ export interface StoryCartridge {
 export interface DemoTurn { match: string[]; content: string; imagePrompt?: string; imageSubject?: SceneImageSubject }
 
 export interface StorySave {
-  version: 8
+  version: 9
   cartridgeId: CartridgeId
   locale: Locale
   remoteChatId?: string
@@ -238,6 +238,7 @@ export interface StoryArchive {
 
 export type ParsedCommand =
   | { type: 'choices'; choices: string[] }
+  | { type: 'situation'; text: string }
   | { type: 'widget'; id: string; operation: 'value' | 'count' | 'add' | 'remove'; value: string | number }
   | { type: 'skill_check'; skill: string; dc: number; roll: number; modifier: number; total: number; result: string }
   | { type: 'state'; value: string }

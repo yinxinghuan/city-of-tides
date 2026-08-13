@@ -2,7 +2,7 @@ import { SCENE_IMAGE_PROMPT_VERSION, type CharacterDefinition, type DangerDirect
 import { t } from '../i18n'
 import { chooseSceneImage } from './imageDirector'
 import { createInitialDangerState, normalizeDangerState, settleDangerTurn } from './dangerDirector'
-import { choicesAreGrounded, createTransitionBlock, shortDecisionContext } from './continuity'
+import { authoredDecisionContext, choicesAreGrounded, createTransitionBlock } from './continuity'
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
@@ -11,9 +11,9 @@ function clamp(value: number, min: number, max: number): number {
 export function createInitialSave(cartridge: StoryCartridge, remoteChatId?: string): StorySave {
   const initialPartyMemberIds = cartridge.initialPartyMemberIds ?? cartridge.characters.filter((character) => character.initialStatus === 'companion').map((character) => character.id)
   return {
-    version: 8, cartridgeId: cartridge.id, locale: cartridge.locale, remoteChatId, entered: false, scene: 0,
+    version: 9, cartridgeId: cartridge.id, locale: cartridge.locale, remoteChatId, entered: false, scene: 0,
     location: cartridge.opening.location, time: cartridge.opening.time, objective: cartridge.opening.objective,
-    decisionContext: cartridge.opening.objective,
+    decisionContext: '',
     stats: Object.fromEntries(cartridge.statDefinitions.map((stat) => [stat.id, stat.initial])), facts: { ...(cartridge.initialFacts ?? {}) },
     blocks: [...cartridge.opening.blocks, createImageBlock('image-0', cartridge.opening.location, cartridge.opening.imagePrompt, 'idle')],
     choices: cartridge.opening.choices, map: cartridge.initialMap.map((node) => ({ ...node, visited: node.visited ?? Boolean(node.current), facts: node.facts ? [...node.facts] : undefined })),
@@ -325,12 +325,11 @@ export function applyParsedScene(
     stats: { ...save.stats },
     facts: { ...save.facts },
     danger: normalizeDangerState(save.danger),
-    sessionEnded: false, lastActionId: actionId,
+    decisionContext: '', sessionEnded: false, lastActionId: actionId,
   }
   const visibleTurnText = parsed.blocks
     .filter((block) => block.kind === 'narration' || block.kind === 'dialogue')
     .map((block) => block.text.trim()).filter(Boolean).join(' ')
-  if (visibleTurnText) next.decisionContext = shortDecisionContext(visibleTurnText, cartridge.locale)
   const effects: StoryBlock[] = []
   let dangerCheckAdded = false
 
@@ -343,6 +342,7 @@ export function applyParsedScene(
       // valid choice set recovered from prose.
       if (labels.length) next.choices = labels.map((label, choiceIndex) => ({ id: `${next.scene}-${choiceIndex}`, label }))
     }
+    if (command.type === 'situation') next.decisionContext = authoredDecisionContext(command.text, visibleTurnText, cartridge.locale)
     if (command.type === 'widget') {
       const definition = cartridge.statDefinitions.find((stat) => stat.id === command.id)
       if (!definition) return

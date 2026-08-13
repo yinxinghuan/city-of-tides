@@ -9,8 +9,19 @@ function equal(actual: unknown, expected: unknown, message: string) { if (actual
 const cartridge = listCartridges('en')[0]
 ok(cartridge, 'standalone cartridge is registered')
 const initial = createInitialSave(cartridge)
-equal(initial.version, 8, 'StorySave v8 is active')
+equal(initial.version, 9, 'StorySave v9 is active')
 const baselineParty = initial.partyMemberIds.length
+
+const ordinaryTurn = applyParsedScene(initial, parseStoryProtocol(`The driver points to the loose wheel and asks whether you can stay to help.\n[choices: "Stay and help"|"Ask what broke"|"Keep walking"]`, 'en'), cartridge, 'Offer help')
+equal(ordinaryTurn.decisionContext, '', 'ordinary visible prose does not create a duplicate context row')
+const anchoredTurn = applyParsedScene(initial, parseStoryProtocol(`The driver blocks the road while the wheel leans off its axle.\n[situation: "The road stays blocked until the wheel is secured"]\n[choices: "Brace the axle"|"Find more rope"|"Ask the driver to move"]`, 'en'), cartridge, 'Inspect the wagon')
+equal(anchoredTurn.decisionContext, 'The road stays blocked until the wheel is secured', 'an independent concise situation is preserved')
+const copiedTurn = applyParsedScene(initial, parseStoryProtocol(`The road stays blocked until the wheel is secured.\n[situation: "The road stays blocked until the wheel is secured"]\n[choices: "Brace the axle"|"Find more rope"|"Ask the driver to move"]`, 'en'), cartridge, 'Inspect the wagon')
+equal(copiedTurn.decisionContext, '', 'a copied prose sentence is rejected')
+const statusDump = parseStoryProtocol(`The smith asks you to inspect the well.\n\n【当前状态更新】\n体力：75\n补给：6\n名望：10\n位置：灰瓦村方向 - 铁匠铺\n角色身份：帮工\n\n[widget: vitality, value: 75]\n[choices: "Inspect the well"|"Ask for rope"|"Rest first"]`, 'zh')
+ok(statusDump.blocks.some((block) => block.text.includes('smith')), 'story prose remains visible')
+ok(statusDump.blocks.every((block) => !/当前状态更新|体力：75|角色身份：帮工/.test(block.text)), 'narrated status report is removed from visible prose')
+ok(statusDump.commands.some((command) => command.type === 'widget'), 'authoritative widget command remains')
 
 const first = applyParsedScene(initial, parseStoryProtocol(`Ari becomes a recurring guide and joins the existing party.
 [character_update: character="Ari" role="Guide" detail="Knows the old roads" vitality="81" stress="9" skills="Observe: 3|Track: 4"]

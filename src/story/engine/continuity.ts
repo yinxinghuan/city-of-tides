@@ -4,10 +4,13 @@ function clean(value: string): string {
   return value.toLocaleLowerCase().replace(/[\s，。！？、,.!?;；:："“”'‘’()（）\-—_/]+/g, '')
 }
 
-export function shortDecisionContext(value: string, locale: StoryCartridge['locale']): string {
-  const normalized = value.replace(/[\n\r\t]+/g, ' ').replace(/[“”"']/g, '').trim()
-  const maxLength = locale === 'zh' ? 52 : 170
-  return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1).trim()}…` : normalized
+export function authoredDecisionContext(value: string, visibleTurnText: string, locale: StoryCartridge['locale']): string {
+  const normalized = value.replace(/[\n\r\t]+/g, ' ').replace(/^[“”"'‘’]+|[“”"'‘’]+$/g, '').replace(/\s+/g, ' ').trim()
+  const maxLength = locale === 'zh' ? 28 : 96
+  if (!normalized || normalized.length > maxLength) return ''
+  if (/请(?:做出|作出)?选择|接下来(?:怎么|如何)做|what (?:will|do) you do|make (?:a|your) choice/i.test(normalized)) return ''
+  if (clean(visibleTurnText).includes(clean(normalized))) return ''
+  return normalized
 }
 
 export function createTransitionBlock(

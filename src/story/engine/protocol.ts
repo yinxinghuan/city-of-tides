@@ -2,7 +2,7 @@ import { t } from '../i18n'
 import type { EntityMetric, Locale, ParsedCommand, ParsedScene, SceneImageSubject, SkillDefinition, StoryBlock } from '../types'
 
 const commandNames = new Set([
-  'choices', 'widget', 'skill_check', 'state', 'clock', 'fact', 'map_update', 'inventory',
+  'choices', 'situation', 'widget', 'skill_check', 'state', 'clock', 'fact', 'map_update', 'inventory',
   'reputation', 'character_update', 'party_change', 'encounter', 'session_end',
 ])
 
@@ -106,6 +106,10 @@ function parseCommand(name: string, source: string, locale: Locale): ParsedComma
   const data = attrs(source)
   switch (name) {
     case 'choices': return { type: 'choices', choices: parseChoices(source) }
+    case 'situation': {
+      const text = (data.value ?? source.replace(/^\s*situation\s*:/i, '')).replace(/^["'“”‘’]|["'“”‘’]$/g, '').trim()
+      return text ? { type: 'situation', text } : null
+    }
     case 'widget': {
       const head = source.replace(/^\s*widget\s*:/i, '').split(',')[0].trim()
       const operation = (['value', 'count', 'add', 'remove'] as const).find((key) => data[key] != null) ?? 'value'
@@ -180,6 +184,18 @@ function commandSpans(raw: string, locale: Locale): Array<{ start: number; end: 
   return spans
 }
 
+function removeNarratedStatusDump(value: string): string {
+  const marker = /^[\s【\[]*(?:当前)?(?:状态|数值)(?:更新|变化|报告)?[\s】\]]*[:：]?\s*$|^\s*(?:current\s+)?(?:status|stat|value)(?:\s+update|\s+report|\s+changes?)?\s*[:：]?\s*$/i
+  const field = /^\s*(?:[-*•]\s*)?(?:体力|补给|名望|声望|位置|地点|时间|角色身份|身份|当前目标|目标|生命|活力|压力|关系|物品|行囊|vitality|health|supplies|supply|reputation|renown|location|place|time|role|identity|objective|stress|relationship|inventory)\s*[:：][^\n]*$/i
+  let dropping = false
+  return value.split('\n').map((line) => {
+    if (marker.test(line.trim())) { dropping = true; return '' }
+    if (dropping && (!line.trim() || field.test(line))) return ''
+    dropping = false
+    return line
+  }).join('\n')
+}
+
 export function parseStoryProtocol(raw: string, locale: Locale = 'zh'): ParsedScene {
   const spans = commandSpans(raw, locale)
   let prose = raw
@@ -188,6 +204,7 @@ export function parseStoryProtocol(raw: string, locale: Locale = 'zh'): ParsedSc
   // Remove a protocol line that was cut off before its closing bracket. It is
   // machine residue, and leaving it at the tail prevents natural-choice scan.
   prose = prose.replace(/^\s*\[[a-z_]+\s*:.*$/gim, '\n')
+  prose = removeNarratedStatusDump(prose)
   // A truncated/empty structured tag must not suppress otherwise recoverable
   // numbered choices in the visible prose.
   const hasStructuredChoices = spans.some((span) => span.command.type === 'choices' && span.command.choices.length >= 2)

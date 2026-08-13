@@ -14,7 +14,7 @@ import { t } from './i18n'
 import { ITEM_IMAGE_STYLE_VERSION, type AdapterProgress, type InventoryItem, type Locale, type StoryArchive, type StoryCartridge, type StoryMode, type StorySave } from './types'
 
 type LegacyStorySave = Omit<StorySave, 'version' | 'locale' | 'characters' | 'partyMemberIds' | 'danger' | 'facts' | 'decisionContext'> & {
-  version?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
+  version?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
   decisionContext?: string
   locale?: Locale
   characters?: StorySave['characters']
@@ -128,8 +128,8 @@ function normalizeSave(candidate: LegacyStorySave | null | undefined, cartridge:
   })
   const characterState = normalizeCharacterState(repaired, cartridge)
   const normalized = {
-    ...repaired, ...characterState, version: 8, locale: repaired.locale ?? cartridge.locale,
-    decisionContext: repaired.decisionContext ?? repaired.objective ?? cartridge.opening.objective,
+    ...repaired, ...characterState, version: 9, locale: repaired.locale ?? cartridge.locale,
+    decisionContext: repaired.version === 9 ? repaired.decisionContext ?? '' : '',
     facts: { ...(cartridge.initialFacts ?? {}), ...(repaired.facts ?? {}) },
     remoteChatId: incomingChatId || repaired.remoteChatId, blocks, inventory, map,
     danger: normalizeDangerState(repaired.danger),

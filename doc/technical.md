@@ -39,7 +39,7 @@ _qa/
 
 ## 3. 核心模块
 
-未发布的个人冒险研究引擎使用 `StorySave.version = 8`，包含 `facts` 与 `decisionContext`。模型可用 `[fact]` 持久化发现、承诺和路线选择，`worldContext.ts` 每轮把权威事实回送给续写模型；已有地点、人物、关系和事实仍只能由 reducer 提交。它不参与默认产品 bundle。
+未发布的个人冒险研究引擎使用 `StorySave.version = 9`，包含 `facts` 与可缺省 `decisionContext`。v9 清除旧版机械截断正文产生的局面栏；只有经过长度与非复制校验的 `[situation]` 才显示“眼前”。`protocol.ts` 移除模型误写的状态清单但保留 `[widget]`，`StoryShell.tsx` 依据权威 `stat/delta` 渲染增减签条与顶部单项动态反馈。模型仍可用 `[fact]` 持久化发现、承诺和路线选择；它不参与默认产品 bundle。
 
 `domainRules.ts` 在危险调度与 adapter 之前处理三项返乡首选：旧路、救尼洛、登高观察。命中规则时完全跳过模型调用，本地文本、事实、数值、时钟、地图、目标、人物登场与三项后续选择原子提交；重复动作只给拒绝结果，不重复领取收益。尼洛使用 `hiddenUntilIntroduced`，只有“救人”正文成立的同一回合才进入人物存档。
 
