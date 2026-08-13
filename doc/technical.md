@@ -48,6 +48,7 @@ _qa/
 - `src/main.tsx` 静态导入 `CityOfTidesShell` 和 `city-of-tides.less`，保证 MiniAPP 与 UUID 正式主站默认打开共享世界，而不是个人故事 `StoryShell`。Pages 只验证同 commit 静态构建，不作为共享 API 运行时。
 - 首次打开只渲染封面入口；共享世界数据在背景加载，按钮就绪后进入主 Shell。
 - Shell 使用单列 CSS Grid；720 px 以下占满 `100dvh`，对话区独立滚动，底部行动区保持可见。
+- `CityHeaderStat` 以 `useRef` 保存上一次读数，只在实际变化时显示 `860 ms` 有符号增量与语义色动态反馈；区域相关指标以 `regionId` 重新挂载，区域切换不会被误判为增减。
 - platform-layout 按没有外部访客栏的真实平台构图验收；external-guest 只检查远程覆盖后游戏仍可操作。
 
 ### 状态管理与 Gateway

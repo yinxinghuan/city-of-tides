@@ -10,6 +10,38 @@ import { isInAigramNow, openAigramProfile } from '../shared/runtime/bridge'
 type DrawerTab = 'regions' | 'pack' | 'season' | 'anchors' | 'lab'
 type TextSize = 'small' | 'standard' | 'large'
 
+function CityHeaderStat({ label, value, display = String(value), percent, adverseWhenRising = false }: {
+  label: string
+  value: number
+  display?: string
+  percent: number
+  adverseWhenRising?: boolean
+}) {
+  const previousValue = useRef(value)
+  const clearDeltaTimer = useRef<number | undefined>()
+  const [visibleDelta, setVisibleDelta] = useState(0)
+
+  useEffect(() => {
+    const delta = value - previousValue.current
+    previousValue.current = value
+    if (!delta) return
+    window.clearTimeout(clearDeltaTimer.current)
+    setVisibleDelta(delta)
+    clearDeltaTimer.current = window.setTimeout(() => setVisibleDelta(0), 860)
+    return () => window.clearTimeout(clearDeltaTimer.current)
+  }, [value])
+
+  const isGain = visibleDelta !== 0 && (adverseWhenRising ? visibleDelta < 0 : visibleDelta > 0)
+  const changeClass = visibleDelta === 0 ? '' : isGain ? ' has-delta is-delta-gain' : ' has-delta is-delta-loss'
+
+  return <div className={`ct-chat-stat${changeClass}`}>
+    <span>{label}</span>
+    <strong>{display}</strong>
+    <i><b style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}/></i>
+    {visibleDelta !== 0 && <output className="ct-chat-stat__delta" aria-hidden="true">{visibleDelta > 0 ? '+' : ''}{visibleDelta}</output>}
+  </div>
+}
+
 const ACTIONS: Record<RegionId, TraceKind[]> = {
   lighthouse: ['repair', 'warning', 'aid'],
   station: ['route', 'warning', 'repair'],
@@ -230,9 +262,9 @@ export default function CityOfTidesShell() {
           </div>
         </div>
         <div className="ct-chat-stats">
-          <div><span>{t('tide')}</span><strong>{view.tide}</strong><i><b style={{ width: `${view.tide}%` }}/></i></div>
-          <div><span>{t(statusKey(region.status))}</span><strong>{region.value}</strong><i><b style={{ width: `${region.value}%` }}/></i></div>
-          <div><span>{t('traces')}</span><strong>{view.visibleTracesByRegion[regionId].length}/6</strong><i><b style={{ width: `${view.visibleTracesByRegion[regionId].length / 6 * 100}%` }}/></i></div>
+          <CityHeaderStat label={t('tide')} value={view.tide} percent={view.tide} adverseWhenRising/>
+          <CityHeaderStat key={`region-${regionId}`} label={t(statusKey(region.status))} value={region.value} percent={region.value}/>
+          <CityHeaderStat key={`traces-${regionId}`} label={t('traces')} value={view.visibleTracesByRegion[regionId].length} display={`${view.visibleTracesByRegion[regionId].length}/6`} percent={view.visibleTracesByRegion[regionId].length / 6 * 100}/>
         </div>
       </header>
 

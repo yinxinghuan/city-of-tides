@@ -27,6 +27,7 @@
     "test:i18n": "node _qa/i18n.mjs",
     "test:avatar": "node _qa/avatar.mjs",
     "test:interaction-shell": "node _qa/interaction-shell.mjs",
+    "test:value-feedback": "node _qa/value-feedback.mjs",
     "test:city-prologue": "TMPDIR=/private/tmp tsx _qa/city-prologue.ts",
     "test:city-browser": "node _qa/city-v2-browser.mjs"
     ,"test:domain": "TMPDIR=/private/tmp tsx _qa/domain-rules.ts"

@@ -143,11 +143,21 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .ct-chat-head__actions svg { width: 18px; }
 
 .ct-chat-stats { margin-top: 13px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
-.ct-chat-stats > div { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 8px; align-items: end; }
+.ct-chat-stats > div { position: relative; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 8px; align-items: end; isolation: isolate; }
 .ct-chat-stats span { overflow: hidden; color: #819694; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .ct-chat-stats strong { color: #dce5df; font-size: 13px; font-variant-numeric: tabular-nums; }
 .ct-chat-stats i { grid-column: 1/-1; height: 4px; overflow: hidden; background: rgba(255, 255, 255, .09); }
 .ct-chat-stats i b { display: block; height: 100%; background: linear-gradient(90deg, var(--ct-sea-deep), var(--ct-sea)); transition: width .3s ease; }
+.ct-chat-stat.has-delta { --ct-stat-feedback: var(--ct-sea); }
+.ct-chat-stat.is-delta-loss { --ct-stat-feedback: var(--ct-warning); }
+.ct-chat-stat.has-delta::before { content: ""; position: absolute; z-index: -1; inset: -6px -7px -7px; border: 1px solid color-mix(in srgb, var(--ct-stat-feedback) 54%, transparent); background: color-mix(in srgb, var(--ct-stat-feedback) 13%, transparent); pointer-events: none; animation: ct-chat-stat-wash .86s ease-out both; }
+.ct-chat-stat.has-delta strong { color: #fff; animation: ct-chat-stat-value .86s cubic-bezier(.2, .75, .2, 1) both; }
+.ct-chat-stat.has-delta i b { background: var(--ct-stat-feedback); }
+.ct-chat-stat__delta { position: absolute; z-index: 2; top: -9px; right: -3px; color: var(--ct-stat-feedback); font-size: 10px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; text-shadow: 0 1px 8px var(--ct-ink); animation: ct-chat-stat-delta .86s cubic-bezier(.2, .75, .2, 1) both; }
+
+@keyframes ct-chat-stat-wash { 0% { opacity: 0; transform: scale(.94); } 18% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.04); } }
+@keyframes ct-chat-stat-value { 0%, 100% { transform: translateY(0) scale(1); } 24% { transform: translateY(-2px) scale(1.16); } }
+@keyframes ct-chat-stat-delta { 0% { opacity: 0; transform: translateY(5px); } 18% { opacity: 1; transform: translateY(0); } 72% { opacity: 1; } 100% { opacity: 0; transform: translateY(-9px); } }
 
 .ct-conversation {
   min-height: 0;
