@@ -10,7 +10,7 @@ const browser = await chromium.launch({ headless: true })
 
 try {
   for (const size of sizes) {
-    const context = await browser.newContext({ viewport: size, deviceScaleFactor: 1 })
+    const context = await browser.newContext({ viewport: size, deviceScaleFactor: 1, locale: 'zh-CN' })
     const page = await context.newPage()
     const errors = []
     page.on('pageerror', (error) => errors.push(String(error)))

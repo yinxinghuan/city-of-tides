@@ -17,7 +17,7 @@ for (const cartridge of [resolveCartridge(DEFAULT_CARTRIDGE_ID, 'zh'), resolveCa
   ok(config, `${cartridge.id}/${cartridge.locale}: danger director is configured`)
   ok(cartridge.director, `${cartridge.id}/${cartridge.locale}: story director is configured`)
   let save = createInitialSave(cartridge)
-  equal(save.version, 7, `${cartridge.id}: StorySave v7`)
+  equal(save.version, 9, `${cartridge.id}: StorySave v9`)
   let warning: DangerDirective | undefined
   for (let turn = 0; turn <= config.maxSafeTurns + 1; turn += 1) {
     warning = buildDangerDirective(save, cartridge, `safe action ${turn}`)

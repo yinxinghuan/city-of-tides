@@ -3,10 +3,12 @@ import { chromium } from 'playwright'
 const browser = await chromium.launch({ headless: true })
 const baseURL = process.env.CITY_URL || 'http://127.0.0.1:4187/'
 for (const width of [320, 390]) {
-  const page = await browser.newPage({ viewport: { width, height: 844 } })
+  const page = await browser.newPage({ viewport: { width, height: 844 }, locale: 'zh-CN' })
   await page.route('https://images.aiwaves.tech/alteru/guest-shell.js', (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }))
   await page.addInitScript(() => { localStorage.setItem('game_locale', 'zh'); localStorage.setItem('city-of-tides-muted', '1') })
-  await page.goto(baseURL, { waitUntil: 'domcontentloaded' })
+  const url = new URL(baseURL)
+  url.searchParams.set('local', '1')
+  await page.goto(url.href, { waitUntil: 'domcontentloaded' })
   await page.waitForSelector('.ct-entry__copy > button')
   await page.waitForFunction(() => !document.querySelector('.ct-entry__copy > button')?.hasAttribute('disabled'))
   await page.locator('.ct-entry__copy > button').click()

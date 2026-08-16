@@ -61,4 +61,9 @@ const migrated = normalizeCharacterState({
 ok(migrated.partyMemberIds.some((id) => migrated.characters.find((character) => character.id === id)?.name === 'Legacy Two'), 'v4 protocol events migrate into the party')
 ok(!migrated.partyMemberIds.some((id) => migrated.characters.find((character) => character.id === id)?.name === 'Legacy One'), 'v4 explicit departure is respected')
 
+const apostropheChoices = parseStoryProtocol(`[choices: "Play Mira's recording"|"Ask Nilo what's wrong"|"Climb to the upper deck"]`, 'en').commands.find((command) => command.type === 'choices')
+ok(apostropheChoices?.type === 'choices', 'apostrophes inside double-quoted choices do not break the protocol')
+equal(apostropheChoices.choices[0], "Play Mira's recording", 'the first apostrophe choice remains intact')
+equal(parseStoryProtocol(`请做出选择\n[choices: "继续"|"停下"]`, 'zh').blocks.length, 0, 'redundant choice invitation is not visible prose')
+
 console.log(`standalone protocol ok · game=${cartridge.id} · party=${restored.partyMemberIds.length}`)

@@ -1,10 +1,11 @@
-import { SCENE_IMAGE_PROMPT_VERSION, type ParsedScene, type SceneImageSubject, type SceneImageTrigger, type StoryCartridge, type StorySave } from '../types'
+import { SCENE_IMAGE_PROMPT_VERSION, type ParsedScene, type SceneImagePerspective, type SceneImageSubject, type SceneImageTrigger, type StoryCartridge, type StorySave } from '../types'
 
 export interface SceneImageDecision {
   prompt?: string
   source?: 'ai' | 'director'
   reason?: 'ai-proposal' | SceneImageTrigger | 'cadence'
   playerVisible?: boolean
+  perspective?: SceneImagePerspective
 }
 
 function lastScheduledScene(save: StorySave): number {
@@ -110,6 +111,19 @@ function playerIsVisible(parsed: ParsedScene, proposal?: string, subject?: Scene
   return /\b(player protagonist|protagonist|player character|returning player|the player|traveler|wayfarer|adventurer|you)\b|玩家|主角|旅人|旅行者|冒险者|你/i.test(shot)
 }
 
+function directedPerspective(next: StorySave, parsed: ParsedScene, cartridge: StoryCartridge, reason: SceneImageTrigger | 'cadence', proposal: string | undefined, playerVisible: boolean): SceneImagePerspective {
+  if (playerVisible) return 'observer'
+  const shot = proposal ?? ''
+  if (/\b(first[- ]person|player[- ]eye|point[- ]of[- ]view|POV)\b|第一人称|主角视角|玩家视角/i.test(shot)) return 'first-person'
+  if (/\b(third[- ]person|over[- ]the[- ]shoulder|wide establishing|full[- ]body protagonist)\b|第三人称|肩后|全身主角|环境建立镜头/i.test(shot)) return 'observer'
+  const policy = cartridge.imageDirector?.perspective
+  if (reason === 'new-location') return policy?.newLocation ?? 'observer'
+  if (parsed.blocks.some((block) => block.kind === 'dialogue' && block.text.replace(/\s+/g, '').length >= 12)) return policy?.importantDialogue ?? 'observer'
+  if (!policy || policy.ordinary === 'observer') return 'observer'
+  const roll = Math.max(0, Math.floor(next.scene)) % 4
+  return policy.ordinary === 'balanced' ? (roll % 2 === 0 ? 'first-person' : 'observer') : (roll === 0 ? 'observer' : 'first-person')
+}
+
 function buildScenePrompt(
   cartridge: StoryCartridge,
   next: StorySave,
@@ -117,6 +131,7 @@ function buildScenePrompt(
   reason: SceneImageTrigger | 'cadence',
   aiProposal?: string,
   playerVisible = false,
+  perspective: SceneImagePerspective = 'observer',
 ): string {
   const beat = visibleBeat(parsed) || next.objective
   const proposal = aiProposal?.replace(/\s+/g, ' ').trim().slice(0, 620)
@@ -128,6 +143,7 @@ function buildScenePrompt(
     `Latest visible story beat, which overrides older continuity hints: ${beat}.`,
     `Current location hint: ${latestLocation(next, parsed)}. Use it only when consistent with the latest visible beat; never drag an earlier location into a newer scene.`,
     `Mandatory art direction: ${direction}.`,
+    perspective === 'first-person' ? "FIRST-PERSON PLAYER-EYE VIEW. The camera is exactly the protagonist's eyes. Keep the protagonist's face, head, back, shoulders, silhouette, reflection and entire body out of frame; never use over-the-shoulder staging or invent hands unless the visible story establishes them." : 'OBSERVER / THIRD-PERSON VIEW. Use an external cinematic camera and preserve clear spatial relationships.',
     playerVisible ? 'The player protagonist is visibly present in this frame and must be the same person performing the dominant player action. Do not assign that action to a substitute character.' : '',
     'Compose one readable moment with one dominant action and at most two focal subjects. Choose a camera position, scale, lighting pattern and silhouette that differ from earlier images.',
     'Ignore all cover art and opening-scene imagery. Derive the depicted location, action, subjects, props and weather only from the primary shot brief and latest visible story beat.',
@@ -137,8 +153,9 @@ function buildScenePrompt(
 
 export function shouldUsePlayerImageReference(prompt: string): boolean {
   const explicitlyEmpty = /\b(no people|nobody|unoccupied|environment-only|object-only)\b|无人|空镜|纯环境|物品特写/i.test(prompt)
+  const firstPerson = /\b(first[- ]person|player[- ]eye|point[- ]of[- ]view|POV)\b|第一人称|主角视角|玩家视角/i.test(prompt)
   const playerVisible = /\b(player protagonist|protagonist|player character|returning player|the player|traveler|wayfarer|adventurer|you)\b|玩家|主角|旅人|旅行者|冒险者/i.test(prompt)
-  return playerVisible && !explicitlyEmpty
+  return playerVisible && !explicitlyEmpty && !firstPerson
 }
 
 export function upgradePendingSceneImagePrompts(save: StorySave, cartridge: StoryCartridge): StorySave {
@@ -157,14 +174,16 @@ export function upgradePendingSceneImagePrompts(save: StorySave, cartridge: Stor
     }
     const historical = { ...save, location: block.text || save.location }
     const visible = playerIsVisible(parsed)
+    const perspective = directedPerspective(historical, parsed, cartridge, 'cadence', undefined, visible)
     changed = true
     return {
       ...block,
       data: {
         ...block.data,
-        prompt: buildScenePrompt(cartridge, historical, parsed, 'cadence', undefined, visible),
+        prompt: buildScenePrompt(cartridge, historical, parsed, 'cadence', undefined, visible, perspective),
         promptVersion: SCENE_IMAGE_PROMPT_VERSION,
         playerVisible: visible ? 'true' : 'false',
+        perspective,
         status: block.data?.status === 'generating' ? 'queued' : block.data?.status ?? 'queued',
       },
     }
@@ -183,11 +202,13 @@ export function chooseSceneImage(
   const proposal = aiPrompt?.trim()
   if (proposal) {
     const visible = playerIsVisible(parsed, proposal, imageSubject)
+    const perspective = directedPerspective(next, parsed, cartridge, 'cadence', proposal, visible)
     return {
-      prompt: buildScenePrompt(cartridge, next, parsed, 'cadence', proposal, visible),
+      prompt: buildScenePrompt(cartridge, next, parsed, 'cadence', proposal, visible, perspective),
       source: 'ai',
       reason: 'ai-proposal',
       playerVisible: visible,
+      perspective,
     }
   }
 
@@ -196,15 +217,17 @@ export function chooseSceneImage(
   const visible = playerIsVisible(parsed, undefined, imageSubject)
   const triggers = detectTriggers(previous, parsed)
   const guaranteed = firstTrigger(triggers, director.guaranteedTriggers)
-  if (guaranteed) return { prompt: buildScenePrompt(cartridge, next, parsed, guaranteed, undefined, visible), source: 'director', reason: guaranteed, playerVisible: visible }
+  if (guaranteed) { const perspective = directedPerspective(next, parsed, cartridge, guaranteed, undefined, visible); return { prompt: buildScenePrompt(cartridge, next, parsed, guaranteed, undefined, visible, perspective), source: 'director', reason: guaranteed, playerVisible: visible, perspective } }
 
   const turnsSinceImage = next.scene - lastScheduledScene(previous)
   const soft = firstTrigger(triggers, director.softTriggers)
   if (soft && turnsSinceImage >= director.softCooldownTurns) {
-    return { prompt: buildScenePrompt(cartridge, next, parsed, soft, undefined, visible), source: 'director', reason: soft, playerVisible: visible }
+    const perspective = directedPerspective(next, parsed, cartridge, soft, undefined, visible)
+    return { prompt: buildScenePrompt(cartridge, next, parsed, soft, undefined, visible, perspective), source: 'director', reason: soft, playerVisible: visible, perspective }
   }
   if (turnsSinceImage >= director.maxQuietTurns) {
-    return { prompt: buildScenePrompt(cartridge, next, parsed, 'cadence', undefined, visible), source: 'director', reason: 'cadence', playerVisible: visible }
+    const perspective = directedPerspective(next, parsed, cartridge, 'cadence', undefined, visible)
+    return { prompt: buildScenePrompt(cartridge, next, parsed, 'cadence', undefined, visible, perspective), source: 'director', reason: 'cadence', playerVisible: visible, perspective }
   }
   return {}
 }

@@ -134,7 +134,7 @@ function normalizeSave(candidate: LegacyStorySave | null | undefined, cartridge:
     remoteChatId: incomingChatId || repaired.remoteChatId, blocks, inventory, map,
     danger: normalizeDangerState(repaired.danger),
   } as StorySave
-  if (!normalized.sessionEnded && normalized.choices.length < 2) normalized.choices = createRecoveryChoices(normalized, cartridge)
+  if (!normalized.sessionEnded && normalized.choices.length === 0) normalized.choices = createRecoveryChoices(normalized, cartridge)
   return upgradePendingSceneImagePrompts(normalized, cartridge)
 }
 

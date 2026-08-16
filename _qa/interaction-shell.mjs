@@ -5,7 +5,7 @@ console.log('interaction shell: launching browser')
 const browser = await chromium.launch({ headless: true })
 
 try {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 })
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, locale: 'zh-CN' })
   const page = await context.newPage()
   const errors = []
   page.on('pageerror', (error) => errors.push(String(error)))

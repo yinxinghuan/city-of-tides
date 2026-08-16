@@ -36,7 +36,7 @@ Create 2-5 concise story beats. Show a concrete consequence, preserve character 
 CHOICE GROUNDING IS A HARD RULE: every person, place, object, institution, and immediate goal named by a choice must already be visible in this response or established in the authoritative state. Never use a choice to introduce a new noun or story premise.
 DECISION ANCHOR IS OPTIONAL: normally omit it because the visible prose already explains the choices. Only when the choice labels still need one shared premise, emit one independent [situation] paraphrase: at most 28 Chinese characters or 96 English characters, never a copied sentence, never an instruction to choose.
 LOCATION CONTINUITY IS A HARD RULE: before any map_update changes the location, visibly close the previous place and pass through this recurring journey anchor: ${context.cartridge.transitionAnchor ?? 'the current route record'}. Only then narrate arrival. Never cut directly from one world, district, chapter, or time period into another.
-Finish every response, including a session_end checkpoint, with exactly three distinct actionable choices.
+Finish every response, including a session_end checkpoint, with one to five distinct actionable choices. Use only the choices that genuinely fit the current situation; never pad to three and never discard a grounded fourth or fifth option.
 Every response must advance at least one trackable fact: situation, time, location, stat, inventory, relationship, or objective. Atmosphere alone is not progress.
 STATE DISPLAY IS ENGINE-OWNED: never print a status-update heading or a list of current values, locations, roles, objectives, or inventory in visible prose. Describe consequences naturally and submit every numeric change only through widget commands; the interface will render the authoritative delta.
 Use dialogue lines only in this form:
@@ -47,7 +47,7 @@ ${partyContinuityContract}
 ${dangerContract}
 
 Allowed protocol commands, each on its own line:
-[choices: "Choice one"|"Choice two"|"Choice three"]
+[choices: "Choice one"|"Choice two"|... up to five grounded choices]
 [situation: "One concise shared premise for the choices"]
 [widget: id, value: NUMBER]
 [skill_check: skill="Name" dc="NUMBER" rolls="NUMBER" modifier="NUMBER" total="NUMBER" result="critical-success|success|costly-success|failure|critical-failure"]

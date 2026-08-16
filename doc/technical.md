@@ -111,3 +111,13 @@ _qa/
 - 正式入口的区域选择由 `CityOfTidesShell.tsx` 的 `pendingRegionId` 分成两步：先打开 `.ct-transit` 渡口潮图台，确认后才调用 `setSelectedRegionId()`；取消不会改变当前区域。
 - `src/shared-world/i18n.ts` 维护中英双语的出发区、目的区和中转说明；快捷行动继续来自按区域穷举的 `ACTIONS`，不存在由生成文本临时塞入陌生人物或任务名的入口。
 - 未发布的个人冒险研究引擎仍通过 Cartridge `transitionAnchor`、`continuity.ts` 与 reducer 执行生成选项接地和地图桥接；`_qa/continuity-gate.ts` 只证明该研究引擎，不代替默认共享世界入口的视觉验收。
+
+## 推荐选项、镜头与多人边界（2026-08-17）
+
+- `filterGroundedChoices()` 对模型返回的选项逐条筛选；reducer 在仍有一条有效选项时直接保留，不补齐固定数量，只有零条时才调用 `createRecoveryChoices()`。
+- `protocol.ts` 先按 `|` 分段再剥每段首尾成对引号，保留 `Mira's recording` 一类单词内部撇号；序章中英文回放和 `_qa/protocol.ts` 都覆盖该输入。
+- `domainResolution` 是本地权威领域规则结果，跳过通用文本接地过滤，避免已经原子提交的合法结果被二次误判；普通模型回合继续接受连续性检查。
+- `createRecoveryChoices()` 在危险态复述同一个具体威胁并选取 cartridge 的单步应对手段，在平静态只延续上一行动、当前地点或目标，不再生成“与同伴商量”等抽象转场。
+- `StoryImageDirector.perspective` 配置普通回合 `balanced`、重要对话 `first-person`、新地点 `observer`。`imageDirector.ts` 将决定写入 pending 和 scene image metadata；版本 `5` 只迁移尚未完成的旧请求。
+- `_qa/perspective-director.ts` 机械验证中英各 20 个普通场景为 `10/10`，并验证重要对话、新地点和玩家完整动作的机位约束；`_qa/continuity-gate.ts` 验证部分坏选项只删除坏项且不补位。
+- 正式多人运行时只使用 `getGameApiBase()` 得到的 `/<GAME_ID>/api/*` 同 Worker 路由。Pages 是同 commit 的静态镜像，不连接源数据库，也不能作为共享世界读写验收入口。

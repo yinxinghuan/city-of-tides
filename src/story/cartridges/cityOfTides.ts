@@ -40,6 +40,7 @@ function build(locale: Locale): StoryCartridge {
       maxQuietTurns: 3, softCooldownTurns: 2,
       guaranteedTriggers: ['new-location', 'party-change', 'chapter-checkpoint'],
       softTriggers: ['relationship-change', 'objective-change', 'skill-outcome', 'rare-item'],
+      perspective: { ordinary: 'balanced', importantDialogue: 'first-person', newLocation: 'observer' },
     } satisfies StoryImageDirector,
     director: {
       mode: 'open-world',
@@ -70,7 +71,7 @@ function build(locale: Locale): StoryCartridge {
         '玩家可以拒绝建议、检查任何可见物、返回、等待潮相、攀行、乘船、交涉、潜行、利用环境或自由尝试其他合理行动。不要强迫立刻追主线。',
         '障碍优先允许观察、交涉、环境、物品、冒险或正面冲突等多种方法，不把战斗设为唯一答案。',
         '稀有物品必须先在正文说明能力、限制或代价与来源。失败造成受伤、损失、路线变化、不信任或潮相推进，不删档也不永久切断主线。',
-        '每次回应停在新的具体抉择，三个按钮必须匹配正文当前局面。禁止用泛化的“继续游戏”替代具体选择。',
+        '每次回应停在新的具体抉择，只提供一至五个真正匹配当前局面的按钮，不凑满三个，也不丢弃有效的第四、第五项。禁止用泛化的“继续游戏”替代具体选择。',
         '到达潮钟瞭望台并看见四区是可继续的章节边界，不锁输入；之后可以选任意区域或继续在港区探索。',
       ] : [
         'You may create local places, resident requests, weather, tide beasts, treasures, rumors and relationship events. The prologue mainly advances the return, a tide change, meeting Nilo, Mira first echo and the overlook revealing four districts.',
@@ -78,7 +79,7 @@ function build(locale: Locale): StoryCartridge {
         'The player may reject suggestions, inspect visible things, return, wait for a tide, climb, sail, negotiate, sneak, use the environment or attempt another plausible action. Never force immediate pursuit of the main quest.',
         'Obstacles should allow observation, negotiation, environment use, items, risk or confrontation where plausible. Combat is not the only solution.',
         'Before adding rare treasure, explain its ability, limitation or cost and source in visible prose. Failure causes injury, loss, route change, distrust or tide advance, never save deletion or permanent main-story loss.',
-        'End each response at a new concrete decision. Three buttons match the visible situation. Never replace them with a generic Continue game.',
+        'End each response at a new concrete decision. Offer one to five buttons that match the visible situation; never pad to three or discard a grounded fourth or fifth choice. Never replace them with a generic Continue game.',
         'Reaching Tidewatch Overlook and seeing four districts is a continuable checkpoint, not a locked ending; the player may choose any district or keep exploring the harbor.',
       ],
       choiceIntents: zh ? ['观察、追踪回声或与人交涉', '移动并利用环境或物品', '承担风险、帮助别人或采取自定方法'] : ['observe, trace an echo or talk', 'move and use the environment or items', 'take a risk, help someone or choose another method'],
@@ -90,7 +91,8 @@ function build(locale: Locale): StoryCartridge {
       threatPalette: zh
         ? ['潮兽正从退水后的暗处靠近', '涨水正在封闭当前路线', '浸水旧建筑开始坍塌', '潮钟守卫锁定了这片区域', '错位的时间回声正在误导道路', '一名竞争者正沿玩家留下的痕迹追来']
         : ['a tide beast is approaching from the newly exposed dark', 'rising water is sealing the current route', 'a flooded old structure is beginning to collapse', 'tidewatch guards have locked onto the area', 'a displaced time echo is misleading the route', 'a rival is following the player trace'],
-      methods: zh ? ['观察潮相、交涉或准备', '潜行、航行或改变路线', '使用环境、物品或正面应对'] : ['read the tide, negotiate, or prepare', 'sneak, sail, or change route', 'use the environment, an item, or confront it'],
+      methods: zh ? ['听潮铜回声判断威胁来向', '借折潮帆撤到更高的屋顶', '点燃密封灯芯照亮当前障碍'] : ['Read the threat direction from the tide-copper echo', 'Use the Foldtide Sail to reach a higher roof', 'Light a Sealed Lamp Cell to reveal the obstacle'],
+      legacyMethods: [zh ? ['观察潮相、交涉或准备', '潜行、航行或改变路线', '使用环境、物品或正面应对'] : ['read the tide, negotiate, or prepare', 'sneak, sail, or change route', 'use the environment, an item, or confront it']],
       physicalCombat: 'rare',
       resolution: {
         skill: s('潮城应变', 'Tidecraft'), modifier: 2, dcBySeverity: [9, 11, 13, 15, 17],

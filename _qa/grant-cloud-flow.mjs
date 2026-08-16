@@ -3,7 +3,7 @@ import { chromium } from 'playwright'
 
 const baseURL = process.env.CITY_URL || 'http://127.0.0.1:4190/'
 const browser = await chromium.launch({ headless: true })
-const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 })
+const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, locale: 'zh-CN' })
 const page = await context.newPage()
 let acknowledged = false
 let acknowledgementCount = 0
@@ -67,8 +67,12 @@ await page.route('https://game.aiwaves.tech/city-of-tides-lab/api/world/**', asy
 
 const url = new URL(baseURL)
 url.searchParams.set('api_origin', url.origin)
+url.searchParams.set('api_base', 'https://game.aiwaves.tech/city-of-tides-lab')
 url.searchParams.set('telegram_id', 'grant-qa')
 await page.goto(url.href, { waitUntil: 'domcontentloaded' })
+await page.waitForSelector('.ct-entry__copy > button')
+await page.waitForFunction(() => !document.querySelector('.ct-entry__copy > button')?.hasAttribute('disabled'))
+await page.locator('.ct-entry__copy > button').click()
 await page.waitForSelector('.ct-shell')
 await page.addStyleTag({ content: '#alteru-guest-banner,#alteru-guest-login{display:none!important}' })
 await page.locator('.ct-world-button').click()
