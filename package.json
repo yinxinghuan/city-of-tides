@@ -24,7 +24,8 @@
     "test:interaction-shell": "node _qa/interaction-shell.mjs",
     "test:value-feedback": "node _qa/value-feedback.mjs",
     "test:city-prologue": "node --import tsx _qa/city-prologue.ts",
-    "test:domain": "node --import tsx _qa/domain-rules.ts"
+    "test:domain": "node --import tsx _qa/domain-rules.ts",
+    "test:authority-shadow": "node --import tsx _qa/authority-shadow.ts"
   },
   "dependencies": {
     "react": "^18.3.1",

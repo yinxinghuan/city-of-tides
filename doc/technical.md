@@ -121,3 +121,8 @@ _qa/
 - `StoryImageDirector.perspective` 配置普通回合 `balanced`、重要对话 `first-person`、新地点 `observer`。`imageDirector.ts` 将决定写入 pending 和 scene image metadata；版本 `5` 只迁移尚未完成的旧请求。
 - `_qa/perspective-director.ts` 机械验证中英各 20 个普通场景为 `10/10`，并验证重要对话、新地点和玩家完整动作的机位约束；`_qa/continuity-gate.ts` 验证部分坏选项只删除坏项且不补位。
 - 正式多人运行时只使用 `getGameApiBase()` 得到的 `/<GAME_ID>/api/*` 同 Worker 路由。Pages 是同 commit 的静态镜像，不连接源数据库，也不能作为共享世界读写验收入口。
+
+## 个人冒险行动影子审计（2026-08-20）
+
+- 未发布的个人冒险研究入口通过 `engine/authorityShadow.ts` 对当前可见选择做 `accepted / rejected / open` 分类，并记录非终局空 tray；正式共享世界的 `ACTIONS`、Worker 权威和 UI 均不被替换。
+- 样本只留在页面内存最近 100 条，不进个人或共享存档、不上传；`?authority_shadow=0` 可关闭，`npm run test:authority-shadow` 验证选择零改写。

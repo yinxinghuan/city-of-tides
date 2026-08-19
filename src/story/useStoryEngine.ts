@@ -10,6 +10,7 @@ import { parseStoryProtocol } from './engine/protocol'
 import { shouldUsePlayerImageReference, upgradePendingSceneImagePrompts } from './engine/imageDirector'
 import { buildDangerDirective, normalizeDangerState } from './engine/dangerDirector'
 import { resolveDomainAction } from './engine/domainRules'
+import { recordAuthorityShadowSample } from './engine/authorityShadow'
 import { t } from './i18n'
 import { ITEM_IMAGE_STYLE_VERSION, type AdapterProgress, type InventoryItem, type Locale, type StoryArchive, type StoryCartridge, type StoryMode, type StorySave } from './types'
 
@@ -162,6 +163,8 @@ export function useStoryEngine(cartridge: StoryCartridge, initialMode: StoryMode
   const archiveRef = useRef<StoryArchive>({ version: 1, worlds: {} })
   const { generate } = useGenImage()
   const persist = cloud.persist
+
+  useEffect(() => { recordAuthorityShadowSample(save, cartridge) }, [cartridge, save])
 
   useEffect(() => {
     if (!cloud.loaded || seeded.current) return
