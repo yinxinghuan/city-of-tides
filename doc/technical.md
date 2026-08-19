@@ -124,5 +124,5 @@ _qa/
 
 ## 个人冒险行动影子审计（2026-08-20）
 
-- 未发布的个人冒险研究入口通过 `engine/authorityShadow.ts` 对当前可见选择做 `accepted / rejected / open` 分类，并记录非终局空 tray；正式共享世界的 `ACTIONS`、Worker 权威和 UI 均不被替换。
+- 未发布的个人冒险研究入口通过 `engine/authorityShadow.ts` 对当前可见选择做 `accepted / rejected / open` 分类，并记录非终局空 tray；正式共享世界入口通过 `shared-world/authorityShadow.ts` 记录当前区域穷举动作与临时 disabled 状态。两者都不替换 `ACTIONS`、Worker 权威或 UI。
 - 样本只留在页面内存最近 100 条，不进个人或共享存档、不上传；`?authority_shadow=0` 可关闭，`npm run test:authority-shadow` 验证选择零改写。

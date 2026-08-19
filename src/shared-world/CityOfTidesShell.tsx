@@ -6,6 +6,7 @@ import type { Locale, RegionId, TraceKind, TraceView, Traveller } from './types'
 import { useCityWorld } from './useCityWorld'
 import { useTideAudio } from './useTideAudio'
 import { isInAigramNow, openAigramProfile } from '../shared/runtime/bridge'
+import { recordSharedAuthorityShadowSample } from './authorityShadow'
 
 type DrawerTab = 'regions' | 'pack' | 'season' | 'anchors' | 'lab'
 type TextSize = 'small' | 'standard' | 'large'
@@ -108,6 +109,10 @@ export default function CityOfTidesShell() {
   const labMode = useMemo(() => new URLSearchParams(window.location.search).get('lab') === '1', [])
   const coverImage = useMemo(() => new URL('./poster.png', document.baseURI).href, [])
   const travellersById = useMemo(() => new Map(world.travellers.map((item) => [item.id, item])), [world.travellers])
+
+  useEffect(() => {
+    recordSharedAuthorityShadowSample(world.selectedRegionId, ACTIONS[world.selectedRegionId], world.busy || submittingKind !== null, entered)
+  }, [entered, submittingKind, world.busy, world.selectedRegionId])
 
   useEffect(() => {
     if (!entered || !world.view) return
