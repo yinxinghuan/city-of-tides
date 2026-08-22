@@ -7,6 +7,7 @@ const featureUrl = new URL('../story/audio/assets/feature.mp3', import.meta.url)
 const MUSIC_REPEAT_MS = 30_000
 const AMBIENCE_REPEAT_MS = 7_000
 const FEATURE_COOLDOWN_MS = 180_000
+const CUE_COOLDOWN_MS = 360
 
 export function useTideAudio() {
   const [muted, setMuted] = useState(() => alteruLocalStorage.getItem('city-of-tides-muted') === '1')
@@ -19,6 +20,7 @@ export function useTideAudio() {
   const themeTimerRef = useRef<number>()
   const ambienceTimerRef = useRef<number>()
   const playPendingRef = useRef(new Set<HTMLAudioElement>())
+  const lastCueAtRef = useRef(-Infinity)
 
   const clearReplay = useCallback(() => {
     window.clearTimeout(themeTimerRef.current)
@@ -110,16 +112,19 @@ export function useTideAudio() {
   }, [muted])
 
   const play = useCallback((cue: Cue) => {
+    const now = performance.now()
+    if (now - lastCueAtRef.current < CUE_COOLDOWN_MS) return
+    lastCueAtRef.current = now
     const ctx = ensure()
     if (!ctx) return
     playRecorded()
     if (cue === 'anchor' && playFeature()) return
     const presets: Record<Cue, { notes: number[]; duration: number; gain: number }> = {
-      district: { notes: [220, 330], duration: .09, gain: .03 },
-      trace: { notes: [440, 550, 660], duration: .18, gain: .035 },
-      reply: { notes: [330, 495], duration: .24, gain: .035 },
-      anchor: { notes: [196, 392, 587], duration: .65, gain: .045 },
-      warning: { notes: [140, 220], duration: .22, gain: .03 },
+      district: { notes: [220], duration: .09, gain: .017 },
+      trace: { notes: [440, 660], duration: .16, gain: .019 },
+      reply: { notes: [330, 495], duration: .22, gain: .019 },
+      anchor: { notes: [196, 392], duration: .55, gain: .024 },
+      warning: { notes: [140], duration: .2, gain: .017 },
     }
     const preset = presets[cue]
     const start = ctx.currentTime
