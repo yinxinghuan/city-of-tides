@@ -20,6 +20,8 @@ src/shared-world/
   gateway.ts                         # Local / Remote SharedWorldGateway
   useCityWorld.ts                    # 身份、轮询、提交、冲突恢复和区域状态
   ../shared/runtime/game-api-base.ts # 从 GAME_ID 派生同 Worker API base
+  ../shared/runtime/media.ts         # AlterU 媒体任务、轮询、尺寸与结构化错误客户端
+  ../shared/runtime/useGenImage.ts   # 场景/物品图的 edit/text 选择、幂等键与单次重试
   useGrantInventory.ts               # pending 回执、云存档回读确认与 ack 补偿
   playerInventory.ts                 # receipt_id 去重与个人行囊纯函数
   types.ts                           # 世界事件、行动、视图与玩家类型
@@ -64,6 +66,7 @@ _qa/
 
 - 当前玩家 ID 在动作发生时通过 `getTelegramId()` 读取，登录态通过 `isInAigramNow()` 实时读取，避免 guest-shell 登录后沿用启动时身份。
 - 当前玩家资料由 `/note/telegram/user/get/info/by/telegram_id` 读取 `data.name` 与 `data.head_url`。
+- 场景图和物品图统一通过 AlterU 独立媒体任务服务生成：场景图为 768×576，物品图为 768×768；有公网玩家头像且玩家在镜头内时使用 `edit`，其他请求使用 `text`。客户端最多执行一次受控重试，不再回退旧 `gen-image` 转发接口。
 - 他人痕迹由 `actor_profile` 持久化作者姓名/头像；UI 显示头像+姓名并在平台内调用 `openAigramProfile(userId)`。
 
 ### 公共援助与个人行囊

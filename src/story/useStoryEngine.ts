@@ -220,28 +220,28 @@ export function useStoryEngine(cartridge: StoryCartridge, initialMode: StoryMode
       : updateInventoryItemImage(current, entityId, { status: 'generating' }))
     ;(async () => {
       try {
-        for (let attempt = 0; attempt < 3; attempt += 1) {
-          try {
-            const gap = Math.max(0, 3000 - (Date.now() - lastImageCallAt.current))
-            if (gap) await new Promise((resolve) => window.setTimeout(resolve, gap))
-            const visibility = queuedSceneImage?.data?.playerVisible
-            const usePlayerReference = Boolean(isScene && imageIdentity.refUrl && (
-              visibility === 'true' || (visibility !== 'false' && shouldUsePlayerImageReference(prompt))
-            ))
-            const identityPrompt = usePlayerReference
-              ? `${prompt}. Use the person in the reference image as the player protagonist in this scene. Preserve their recognizable facial features and overall appearance, while adapting clothing, pose, lighting, and camera distance naturally to this fictional world. Keep the environment and story event visually dominant; do not turn the scene into a selfie or portrait.`
-              : prompt
-            lastImageCallAt.current = Date.now()
-            const url = await generate(usePlayerReference
-              ? { prompt: identityPrompt, ref_url: imageIdentity.refUrl }
-              : { prompt: identityPrompt })
-            if (imageAttempt.current === queuedImageKey) commit((current) => isScene
-              ? updateImageBlock(current, entityId, { status: 'ready', url })
-              : updateInventoryItemImage(current, entityId, { status: 'ready', url, styleVersion: ITEM_IMAGE_STYLE_VERSION }))
-            return
-          } catch {
-            if (attempt < 2) await new Promise((resolve) => window.setTimeout(resolve, attempt === 0 ? 3000 : 8000))
-          }
+        try {
+          const gap = Math.max(0, 3000 - (Date.now() - lastImageCallAt.current))
+          if (gap) await new Promise((resolve) => window.setTimeout(resolve, gap))
+          const visibility = queuedSceneImage?.data?.playerVisible
+          const usePlayerReference = Boolean(isScene && imageIdentity.refUrl && (
+            visibility === 'true' || (visibility !== 'false' && shouldUsePlayerImageReference(prompt))
+          ))
+          const identityPrompt = usePlayerReference
+            ? `${prompt}. HARD FULL-VISUAL-IDENTITY CAST MAP: SUBJECT A is the complete player identity from reference image 1. Preserve SUBJECT A's visible face, hair, body silhouette, skin or material, clothing, colors, patterns, accessories, occlusion, and any non-human or faceless anatomy exactly. Any face, skin, hair, hands, arms, legs, or body parts absent or hidden in the reference MUST NOT be invented. Do not recolor, redress, humanize, unmask, or add garments or anatomy. If the story action would require an absent body part, stage the action around SUBJECT A without showing that part. Place that same complete identity naturally into the story action without turning the scene into a selfie or replacing the world composition. The environment and story event remain visually dominant.`
+            : prompt
+          lastImageCallAt.current = Date.now()
+          const url = await generate({
+            prompt: identityPrompt,
+            ref_url: usePlayerReference ? imageIdentity.refUrl : undefined,
+            size: isScene ? { width: 768, height: 576 } : { width: 768, height: 768 },
+          })
+          if (imageAttempt.current === queuedImageKey) commit((current) => isScene
+            ? updateImageBlock(current, entityId, { status: 'ready', url })
+            : updateInventoryItemImage(current, entityId, { status: 'ready', url, styleVersion: ITEM_IMAGE_STYLE_VERSION }))
+          return
+        } catch {
+          // The media client owns the single controlled retry for this logical request.
         }
         if (imageAttempt.current === queuedImageKey) commit((current) => isScene
           ? updateImageBlock(current, entityId, { status: 'failed' })
