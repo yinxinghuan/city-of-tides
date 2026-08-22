@@ -2,6 +2,8 @@ import type { Locale, StoryCartridge, StoryDangerDirector, StoryImageDirector } 
 
 const coverImage = new URL('../img/worlds/city-of-tides.webp', import.meta.url).href
 const entryImage = new URL('../img/worlds/city-of-tides-entry.webp', import.meta.url).href
+const audioThemeUrl = new URL('../audio/assets/theme.mp3', import.meta.url).href
+const audioAmbienceUrl = new URL('../audio/assets/ambience.mp3', import.meta.url).href
 
 function build(locale: Locale): StoryCartridge {
   const zh = locale === 'zh'
@@ -25,6 +27,7 @@ function build(locale: Locale): StoryCartridge {
     },
     theme: { outer: '#071316', surface: '#102428', paper: '#e8e2d4', ink: '#202c2d', muted: '#6f7875', accent: '#6f9f96', danger: '#b35f53', gold: '#bd8057', material: 'harbor' },
     audioTheme: {
+      recorded: { music: { src: audioThemeUrl, gain: .19 }, ambience: { src: audioAmbienceUrl, gain: .31 } },
       material: 'harbor', bpm: 64, rootHz: 146.83, scale: [0, 2, 5, 7, 9],
       levels: { music: .15, ambient: .16, sfx: .42, master: .46 },
       tension: [

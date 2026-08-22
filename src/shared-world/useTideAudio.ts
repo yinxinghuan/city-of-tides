@@ -1,10 +1,68 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 type Cue = 'district' | 'trace' | 'reply' | 'anchor' | 'warning'
+const themeUrl = new URL('../story/audio/assets/theme.mp3', import.meta.url).href
+const ambienceUrl = new URL('../story/audio/assets/ambience.mp3', import.meta.url).href
+const MUSIC_REPEAT_MS = 5_000
+const AMBIENCE_REPEAT_MS = 7_000
 
 export function useTideAudio() {
   const [muted, setMuted] = useState(() => alteruLocalStorage.getItem('city-of-tides-muted') === '1')
+  const mutedRef = useRef(muted)
   const contextRef = useRef<AudioContext | null>(null)
+  const themeRef = useRef<HTMLAudioElement | null>(null)
+  const ambienceRef = useRef<HTMLAudioElement | null>(null)
+  const themeTimerRef = useRef<number>()
+  const ambienceTimerRef = useRef<number>()
+  const playPendingRef = useRef(new Set<HTMLAudioElement>())
+
+  const clearReplay = useCallback(() => {
+    window.clearTimeout(themeTimerRef.current)
+    window.clearTimeout(ambienceTimerRef.current)
+    themeTimerRef.current = undefined
+    ambienceTimerRef.current = undefined
+  }, [])
+
+  const playRecorded = useCallback((allowMuted = false) => {
+    if ((!allowMuted && mutedRef.current) || document.hidden || typeof Audio === 'undefined') return
+    if (!themeRef.current) {
+      const audio = new Audio(themeUrl)
+      audio.preload = 'auto'
+      audio.volume = .14
+      audio.onended = () => {
+        if (mutedRef.current || document.hidden) return
+        themeTimerRef.current = window.setTimeout(() => {
+          audio.currentTime = 0
+          playRecorded()
+        }, MUSIC_REPEAT_MS)
+      }
+      themeRef.current = audio
+    }
+    if (!ambienceRef.current) {
+      const audio = new Audio(ambienceUrl)
+      audio.preload = 'auto'
+      audio.volume = .18
+      audio.onended = () => {
+        if (mutedRef.current || document.hidden) return
+        ambienceTimerRef.current = window.setTimeout(() => {
+          audio.currentTime = 0
+          playRecorded()
+        }, AMBIENCE_REPEAT_MS)
+      }
+      ambienceRef.current = audio
+    }
+    ;[themeRef.current, ambienceRef.current].forEach((audio) => {
+      if (!audio || !audio.paused || playPendingRef.current.has(audio)) return
+      playPendingRef.current.add(audio)
+      void audio.play().catch(() => undefined).finally(() => playPendingRef.current.delete(audio))
+    })
+  }, [])
+
+  const pauseRecorded = useCallback(() => {
+    clearReplay()
+    themeRef.current?.pause()
+    ambienceRef.current?.pause()
+  }, [clearReplay])
 
   const ensure = useCallback(() => {
     if (muted) return null
@@ -18,6 +76,7 @@ export function useTideAudio() {
   const play = useCallback((cue: Cue) => {
     const ctx = ensure()
     if (!ctx) return
+    playRecorded()
     const presets: Record<Cue, { notes: number[]; duration: number; gain: number }> = {
       district: { notes: [220, 330], duration: .09, gain: .03 },
       trace: { notes: [440, 550, 660], duration: .18, gain: .035 },
@@ -39,20 +98,43 @@ export function useTideAudio() {
       oscillator.start(start + index * .035)
       oscillator.stop(start + preset.duration + index * .035 + .03)
     })
-  }, [ensure])
+  }, [ensure, playRecorded])
 
   const toggleMuted = useCallback(() => setMuted((current) => {
     const next = !current
+    mutedRef.current = next
     alteruLocalStorage.setItem('city-of-tides-muted', next ? '1' : '0')
-    if (next) contextRef.current?.suspend().catch(() => {})
+    if (next) {
+      contextRef.current?.suspend().catch(() => {})
+      pauseRecorded()
+    } else {
+      contextRef.current?.resume().catch(() => {})
+      playRecorded(true)
+    }
     return next
-  }), [])
+  }), [pauseRecorded, playRecorded])
 
   useEffect(() => {
-    const onVisibility = () => { if (document.hidden) contextRef.current?.suspend().catch(() => {}) }
+    const onVisibility = () => {
+      if (document.hidden) {
+        contextRef.current?.suspend().catch(() => {})
+        pauseRecorded()
+      } else if (!muted) {
+        contextRef.current?.resume().catch(() => {})
+        playRecorded()
+      }
+    }
     document.addEventListener('visibilitychange', onVisibility)
     return () => document.removeEventListener('visibilitychange', onVisibility)
-  }, [])
+  }, [muted, pauseRecorded, playRecorded])
+
+  useEffect(() => () => {
+    pauseRecorded()
+    themeRef.current = null
+    ambienceRef.current = null
+    contextRef.current?.close().catch(() => {})
+    contextRef.current = null
+  }, [pauseRecorded])
 
   return { muted, toggleMuted, play }
 }

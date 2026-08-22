@@ -126,3 +126,6 @@ _qa/
 
 - 未发布的个人冒险研究入口通过 `engine/authorityShadow.ts` 对当前可见选择做 `accepted / rejected / open` 分类，并记录非终局空 tray；正式共享世界入口通过 `shared-world/authorityShadow.ts` 记录当前区域穷举动作与临时 disabled 状态。两者都不替换 `ACTIONS`、Worker 权威或 UI。
 - 样本只留在页面内存最近 100 条，不进个人或共享存档、不上传；`?authority_shadow=0` 可关闭，`npm run test:authority-shadow` 验证选择零改写。
+## 2026-08-23 混合音频升级
+
+实际运行的 `src/shared-world/useTideAudio.ts` 已加入潮城专属主题与水下城市环境声，并保留原有 Web Audio 即时提示。声音只属于客户端呈现，不写入共享快照、私人关系或公共事件；权威事件提交后才允许本地去重播放，重连不补播历史声音。
