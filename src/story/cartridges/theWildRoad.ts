@@ -19,7 +19,7 @@ const shared = {
   } satisfies StoryImageDirector,
   audioTheme: {
     material: 'wayfarer' as const, bpm: 56, rootHz: 146.83, scale: [0, 2, 5, 7, 9],
-    levels: { music: .16, ambient: .14, sfx: .42, master: .48 },
+    levels: { music: .16, ambient: .14, sfx: .045, master: .48 },
     tension: [
       { statId: 'vitality', direction: 'low' as const, weight: .45 },
       { statId: 'supplies', direction: 'low' as const, weight: .35 },

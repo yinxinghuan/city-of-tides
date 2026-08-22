@@ -120,11 +120,11 @@ export function useTideAudio() {
     playRecorded()
     if (cue === 'anchor' && playFeature()) return
     const presets: Record<Cue, { notes: number[]; duration: number; gain: number }> = {
-      district: { notes: [220], duration: .09, gain: .017 },
-      trace: { notes: [440, 660], duration: .16, gain: .019 },
-      reply: { notes: [330, 495], duration: .22, gain: .019 },
-      anchor: { notes: [196, 392], duration: .55, gain: .024 },
-      warning: { notes: [140], duration: .2, gain: .017 },
+      district: { notes: [220], duration: .09, gain: .008 },
+      trace: { notes: [440, 660], duration: .16, gain: .009 },
+      reply: { notes: [330, 495], duration: .22, gain: .009 },
+      anchor: { notes: [196, 392], duration: .55, gain: .011 },
+      warning: { notes: [140], duration: .2, gain: .008 },
     }
     const preset = presets[cue]
     const start = ctx.currentTime
