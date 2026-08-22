@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { callAigramAPI, isInAigramNow, getTelegramId, type AigramResponse } from '../shared/runtime/bridge'
+import { api_origin, callAigramAPI, type AigramResponse } from '../shared/runtime/bridge'
+import { waitForAigramIdentity } from '../shared/runtime/identity-ready'
 
 interface ProfileData { name?: string; user_name?: string; head_url?: string }
 
@@ -24,17 +25,21 @@ export function usePlayerProfile(): PlayerProfile {
     name: debugName || 'AlterU',
     avatarUrl: debugAvatar || fallbackAvatar,
     imageRefUrl: publicHttpsUrl(debugAvatar),
-    loaded: !isInAigramNow(),
+    loaded: Boolean(debugAvatar || debugName) || !api_origin,
     source: debugAvatar || debugName ? 'debug' : 'default',
   }))
 
   useEffect(() => {
-    if (!isInAigramNow() || !getTelegramId()!) return
     let cancelled = false
     ;(async () => {
+      const telegramId = await waitForAigramIdentity()
+      if (cancelled || !telegramId) {
+        if (!cancelled) setProfile((current) => ({ ...current, loaded: true }))
+        return
+      }
       try {
         const response = await callAigramAPI<AigramResponse<ProfileData>>(
-          `/note/telegram/user/get/info/by/telegram_id?telegram_id=${encodeURIComponent(getTelegramId()!)}`,
+          `/note/telegram/user/get/info/by/telegram_id?telegram_id=${encodeURIComponent(telegramId)}`,
           'GET',
         )
         if (cancelled) return
