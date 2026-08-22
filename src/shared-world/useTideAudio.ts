@@ -3,8 +3,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 type Cue = 'district' | 'trace' | 'reply' | 'anchor' | 'warning'
 const themeUrl = new URL('../story/audio/assets/theme.mp3', import.meta.url).href
 const ambienceUrl = new URL('../story/audio/assets/ambience.mp3', import.meta.url).href
-const MUSIC_REPEAT_MS = 5_000
+const featureUrl = new URL('../story/audio/assets/feature.mp3', import.meta.url).href
+const MUSIC_REPEAT_MS = 30_000
 const AMBIENCE_REPEAT_MS = 7_000
+const FEATURE_COOLDOWN_MS = 180_000
 
 export function useTideAudio() {
   const [muted, setMuted] = useState(() => alteruLocalStorage.getItem('city-of-tides-muted') === '1')
@@ -12,6 +14,8 @@ export function useTideAudio() {
   const contextRef = useRef<AudioContext | null>(null)
   const themeRef = useRef<HTMLAudioElement | null>(null)
   const ambienceRef = useRef<HTMLAudioElement | null>(null)
+  const featureRef = useRef<HTMLAudioElement | null>(null)
+  const featureLastPlayedRef = useRef(-Infinity)
   const themeTimerRef = useRef<number>()
   const ambienceTimerRef = useRef<number>()
   const playPendingRef = useRef(new Set<HTMLAudioElement>())
@@ -51,18 +55,50 @@ export function useTideAudio() {
       }
       ambienceRef.current = audio
     }
-    ;[themeRef.current, ambienceRef.current].forEach((audio) => {
+    const beds = featureRef.current ? [ambienceRef.current] : [themeRef.current, ambienceRef.current]
+    beds.forEach((audio) => {
       if (!audio || !audio.paused || playPendingRef.current.has(audio)) return
       playPendingRef.current.add(audio)
       void audio.play().catch(() => undefined).finally(() => playPendingRef.current.delete(audio))
     })
   }, [])
 
+  const stopFeature = useCallback((resumeTheme: boolean) => {
+    const feature = featureRef.current
+    if (!feature) return
+    feature.onended = null
+    feature.pause()
+    featureRef.current = null
+    if (resumeTheme && !mutedRef.current && !document.hidden) playRecorded()
+  }, [playRecorded])
+
+  const playFeature = useCallback(() => {
+    if (mutedRef.current || document.hidden || featureRef.current || Date.now() - featureLastPlayedRef.current < FEATURE_COOLDOWN_MS) return false
+    const feature = new Audio(featureUrl)
+    feature.preload = 'auto'
+    feature.volume = .16
+    window.clearTimeout(themeTimerRef.current)
+    themeTimerRef.current = undefined
+    themeRef.current?.pause()
+    featureRef.current = feature
+    const finish = () => {
+      if (featureRef.current !== feature) return
+      featureRef.current = null
+      if (!mutedRef.current && !document.hidden) playRecorded()
+    }
+    feature.onended = finish
+    void feature.play()
+      .then(() => { featureLastPlayedRef.current = Date.now() })
+      .catch(finish)
+    return true
+  }, [playRecorded])
+
   const pauseRecorded = useCallback(() => {
+    stopFeature(false)
     clearReplay()
     themeRef.current?.pause()
     ambienceRef.current?.pause()
-  }, [clearReplay])
+  }, [clearReplay, stopFeature])
 
   const ensure = useCallback(() => {
     if (muted) return null
@@ -77,6 +113,7 @@ export function useTideAudio() {
     const ctx = ensure()
     if (!ctx) return
     playRecorded()
+    if (cue === 'anchor' && playFeature()) return
     const presets: Record<Cue, { notes: number[]; duration: number; gain: number }> = {
       district: { notes: [220, 330], duration: .09, gain: .03 },
       trace: { notes: [440, 550, 660], duration: .18, gain: .035 },
@@ -98,7 +135,7 @@ export function useTideAudio() {
       oscillator.start(start + index * .035)
       oscillator.stop(start + preset.duration + index * .035 + .03)
     })
-  }, [ensure, playRecorded])
+  }, [ensure, playFeature, playRecorded])
 
   const toggleMuted = useCallback(() => setMuted((current) => {
     const next = !current
