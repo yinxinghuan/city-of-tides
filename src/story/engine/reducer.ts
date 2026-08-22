@@ -238,8 +238,6 @@ function shortChoiceContext(value: string, maxLength: number): string {
 }
 
 export function createRecoveryChoices(save: Pick<StorySave, 'scene' | 'location' | 'objective' | 'partyMemberIds' | 'danger'>, cartridge: StoryCartridge): StorySave['choices'] {
-  const location = shortChoiceContext(save.location, cartridge.locale === 'zh' ? 14 : 24)
-  const objective = shortChoiceContext(save.objective, cartridge.locale === 'zh' ? 18 : 32)
   if (save.danger.phase !== 'calm' && save.danger.currentThreat) {
     const threat = shortChoiceContext(save.danger.currentThreat, cartridge.locale === 'zh' ? 16 : 30)
     return (cartridge.dangerDirector?.methods ?? []).map((method, index) => ({
@@ -247,16 +245,7 @@ export function createRecoveryChoices(save: Pick<StorySave, 'scene' | 'location'
       label: cartridge.locale === 'zh' ? `针对“${threat}”：${method}` : `Against “${threat}”: ${method}`,
     }))
   }
-  const labels = cartridge.locale === 'zh'
-    ? [
-        `核对${location || '现场'}与刚才行动直接相关的结果`,
-        ...(objective ? [`继续处理“${objective}”`] : []),
-      ]
-    : [
-        `Check the result of the last action at ${location || 'this place'}`,
-        ...(objective ? [`Continue “${objective}”`] : []),
-      ]
-  return labels.map((label, index) => ({ id: `recovery-${save.scene}-${index}`, label }))
+  return []
 }
 
 function validChoiceLabels(labels: string[]): string[] {
